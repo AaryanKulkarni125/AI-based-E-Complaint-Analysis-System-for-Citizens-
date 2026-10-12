@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Analytics & Reporting · Admin Panel{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Grievance Analytics & Performance Metrics</h1>
+    <p class="muted">Live operational data, SLA breach tracking, and department benchmarks (REQ-REP-001..003).</p>
+  </div>
+  <div class="actions-group">
+    <a href="{% url 'complaints:export_csv' %}" class="btn">📥 Export CSV Report</a>
+    <a href="{% url 'complaints:export_pdf' %}" class="btn btn-primary">📄 Export PDF Summary</a>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="stats stats-6">
+  <div class="stat"><div class="num">{{ summary.total }}</div><div class="lbl">Total Logged</div></div>
+  <div class="stat"><div class="num text-info">{{ summary.open }}</div><div class="lbl">Open / Active</div></div>
+  <div class="stat"><div class="num text-success">{{ summary.resolved }}</div><div class="lbl">Resolved</div></div>
+  <div class="stat"><div class="num text-danger">{{ summary.sla_breaches }}</div><div class="lbl">SLA Breaches</div></div>
+  <div class="stat"><div class="num">{{ summary.avg_hours }}h</div><div class="lbl">Avg Turnaround</div></div>
+  <div class="stat"><div class="num text-warning">⭐ {{ summary.avg_rating }}</div><div class="lbl">Satisfaction Rating</div></div>
+</div>
+
+<div class="grid-2" style="margin-top: 24px;">
+  <!-- Category Breakdown -->
+  <article class="card">
+    <h2>Grievances by Civic Category</h2>
+    <div class="table-wrap" style="margin-top: 12px;">
+      <table>
+        <thead><tr><th>Category / Department</th><th>Volume</th></tr></thead>
+        <tbody>
+          {% for c in category_data %}
+            <tr>
+              <td>{{ c.category__name|default:"General / Uncategorized" }}</td>
+              <td><b>{{ c.count }}</b></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="2" class="empty">No category data available.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <!-- Ward Breakdown -->
+  <article class="card">
+    <h2>Grievances by Administrative Ward</h2>
+    <div class="table-wrap" style="margin-top: 12px;">
+      <table>
+        <thead><tr><th>Ward</th><th>Volume</th></tr></thead>
+        <tbody>
+          {% for w in ward_data %}
+            <tr>
+              <td>{{ w.ward|default:"Unspecified" }}</td>
+              <td><b>{{ w.count }}</b></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="2" class="empty">No ward data available.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </article>
+</div>
+
+<!-- Officer Workload & Performance Table -->
+<article class="card" style="margin-top: 24px;">
+  <h2>Officer Workload & Resolution Metrics</h2>
+  <div class="table-wrap" style="margin-top: 12px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Officer</th>
+          <th>Department</th>
+          <th>Availability</th>
+          <th>Assigned Total</th>
+          <th>Resolved Total</th>
+          <th>Active Workload</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in officers %}
+          <tr>
+            <td><b>{{ o.get_full_name|default:o.username }}</b></td>
+            <td>{{ o.officer_profile.department }}</td>
+            <td><span class="badge badge-status">{{ o.officer_profile.get_availability_status_display }}</span></td>
+            <td>{{ o.assigned_total }}</td>
+            <td>{{ o.resolved_total }}</td>
+            <td><b>{{ o.officer_profile.workload }}</b> open</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="empty">No officers registered.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+
+<!-- Recent Citizen Feedback Ratings -->
+<article class="card" style="margin-top: 24px;">
+  <h2>Recent Citizen Satisfaction Feedback (REQ-FDBK-3)</h2>
+  <div class="table-wrap" style="margin-top: 12px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Complaint</th>
+          <th>Citizen</th>
+          <th>Rating</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in recent_feedbacks %}
+          <tr>
+            <td>{{ f.created_at|date:"j M Y" }}</td>
+            <td><a href="{% url 'complaints:detail' f.complaint.pk %}"><b>{{ f.complaint.reference }}</b></a></td>
+            <td>{{ f.citizen.username }}</td>
+            <td style="color: #f59e0b;">
+              {% for i in "12345"|make_list %}
+                {% if forloop.counter <= f.rating %}★{% else %}☆{% endif %}
+              {% endfor %}
+            </td>
+            <td>{{ f.comments|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="empty">No citizen feedback received yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</article>
+{% endblock %}

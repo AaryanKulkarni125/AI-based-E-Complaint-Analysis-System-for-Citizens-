@@ -1,29 +1,78 @@
 {% extends "base.html" %}
-{% block title %}System administrator dashboard{% endblock %}
+{% block title %}System Administrator Dashboard{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
     <h1>Welcome, {{ user.first_name|default:user.username }}</h1>
     <p class="muted">System administrator dashboard</p>
   </div>
+  <div class="actions-group">
+    <a href="{% url 'complaints:admin_map_view' %}" class="btn">🗺️ Live Map</a>
+    <a href="{% url 'complaints:admin_analytics' %}" class="btn">📊 Analytics & SLAs</a>
+    <a href="{% url 'complaints:export_csv' %}" class="btn">📥 Export CSV</a>
+    <a href="{% url 'complaints:export_pdf' %}" class="btn">📄 Export PDF</a>
+  </div>
 </div>
 
-<div class="stats">
-  <div class="stat"><div class="num">{{ user_counts.citizens }}</div><div class="lbl">Citizens</div></div>
-  <div class="stat"><div class="num">{{ user_counts.officers }}</div><div class="lbl">Officers</div></div>
-  <div class="stat"><div class="num">{{ user_counts.admins }}</div><div class="lbl">System administrators</div></div>
+<div class="stats stats-6">
+  <div class="stat"><div class="num">{{ complaint_counts.total }}</div><div class="lbl">Total Grievances</div></div>
+  <div class="stat"><div class="num text-info">{{ complaint_counts.open }}</div><div class="lbl">Active / Open</div></div>
+  <div class="stat"><div class="num text-success">{{ complaint_counts.resolved }}</div><div class="lbl">Resolved</div></div>
+  <div class="stat"><div class="num text-muted">{{ complaint_counts.closed }}</div><div class="lbl">Closed</div></div>
+  <div class="stat"><div class="num text-warning">{{ complaint_counts.reopened }}</div><div class="lbl">Reopened</div></div>
+  <div class="stat"><div class="num text-danger">{{ complaint_counts.needs_review }}</div><div class="lbl">AI Review Required</div></div>
 </div>
 
-<h2>Recent login activity</h2>
+<div class="admin-quick-links" style="margin: 20px 0; display: flex; gap: 12px; flex-wrap: wrap;">
+  <a href="{% url 'complaints:admin_complaint_list' %}" class="btn btn-primary">Manage All Complaints</a>
+  <a href="{% url 'complaints:admin_officer_roster' %}" class="btn">Manage Officer Roster</a>
+  <a href="{% url 'complaints:admin_notification_logs' %}" class="btn">Notification Delivery Logs</a>
+</div>
+
+<h2>Recent Complaints</h2>
+<div class="table-wrap" style="margin-bottom: 30px;">
+  <table>
+    <thead>
+      <tr>
+        <th>Tracking ID</th>
+        <th>Citizen</th>
+        <th>Category</th>
+        <th>Ward</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Submitted</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in recent_complaints %}
+        <tr>
+          <td><a href="{% url 'complaints:detail' c.pk %}"><b>{{ c.reference }}</b></a></td>
+          <td>{{ c.citizen.username }}</td>
+          <td>{{ c.category.name|default:"Auto-Classifying" }}</td>
+          <td>{{ c.ward }}</td>
+          <td><span class="badge badge-priority-{{ c.priority }}">{{ c.get_priority_display }}</span></td>
+          <td><span class="badge badge-status-{{ c.status }}">{{ c.get_status_display }}</span></td>
+          <td>{{ c.submitted_at|date:"j M Y, H:i" }}</td>
+          <td><a href="{% url 'complaints:detail' c.pk %}" class="btn btn-sm">Inspect</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="empty">No complaints recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2>Recent Login Security Audit (REQ-AUTH-009)</h2>
 <div class="table-wrap">
   <table>
-    <thead><tr><th>Time</th><th>Username</th><th>Result</th><th>IP address</th></tr></thead>
+    <thead><tr><th>Time</th><th>Username</th><th>Result</th><th>IP Address</th></tr></thead>
     <tbody>
       {% for a in recent_logins %}
         <tr>
           <td>{{ a.timestamp|date:"j M Y, H:i:s" }}</td>
           <td>{{ a.username }}</td>
-          <td>{{ a.get_outcome_display }}</td>
+          <td><span class="badge badge-outcome-{{ a.outcome }}">{{ a.get_outcome_display }}</span></td>
           <td>{{ a.ip_address|default:"—" }}</td>
         </tr>
       {% empty %}

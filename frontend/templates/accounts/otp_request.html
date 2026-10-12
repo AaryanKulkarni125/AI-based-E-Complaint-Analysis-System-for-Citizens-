@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}OTP Login · Request Code{% endblock %}
+{% block content %}
+<div class="card form-card">
+  <h1>Citizen OTP Authentication</h1>
+  <p class="muted">Enter your registered username, email address, or mobile number to receive a secure 6-digit verification code.</p>
+
+  <form method="post" novalidate data-once>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="alert alert-error" role="alert">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+
+    <div class="field {% if form.identifier.errors %}has-error{% endif %}">
+      <label for="{{ form.identifier.id_for_label }}">Registered Identifier <span class="req" aria-hidden="true">*</span></label>
+      {{ form.identifier }}
+      {{ form.identifier.errors }}
+      <small class="muted">We will send a 6-digit OTP code to your registered contact channel.</small>
+    </div>
+
+    <div class="form-actions" style="margin-top: 20px;">
+      <button type="submit" class="btn btn-primary btn-block">Send Verification Code</button>
+    </div>
+  </form>
+
+  <p class="form-foot">Prefer password login? <a href="{% url 'accounts:login' %}">Sign in with password</a></p>
+</div>
+{% endblock %}

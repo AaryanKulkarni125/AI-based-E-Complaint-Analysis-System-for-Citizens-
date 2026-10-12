@@ -1,0 +1,274 @@
+Software Requirements
+Specification
+for
+Citizen Grievance Redressal System for Municipal Corporation
+Version 1.0 approved
+Prepared by <author>
+<organization>
+<03/08/2026>
+Copyright © 1999 by Karl E. Wiegers. Permission is granted to use, modify, and distribute this document.
+Table of Contents
+Table of Contentsii
+Revision Historyii
+1. Introduction1
+1.1 Purpose1
+1.2 Document Conventions1
+1.3 Intended Audience and Reading Suggestions1
+1.4 Product Scope1
+1.5 References1
+2. Overall Description2
+2.1 Product Perspective2
+2.2 Product Functions2
+2.3 User Classes and Characteristics2
+2.4 Operating Environment2
+2.5 Design and Implementation Constraints2
+2.6 User Documentation2
+2.7 Assumptions and Dependencies3
+3. External Interface Requirements3
+3.1 User Interfaces3
+3.2 Hardware Interfaces3
+3.3 Software Interfaces3
+3.4 Communications Interfaces3
+4. System Features4
+4.1 Feature 1: Grievance Filing & Geo-Tagged Reporting4
+4.2 Feature 2: Live Dashboard & Status Tracking4
+4.3 Feature 3: Department Assignment & Officer Workflow4
+4.4 Feature 4: Citizen Feedback & Closure4
+5. Other Nonfunctional Requirements5
+5.1 Performance Requirements5
+5.2 Safety Requirements5
+5.3 Security Requirements5
+5.4 Software Quality Attributes5
+5.5 Business Rules5
+6. Other Requirements5
+Appendix A: Glossary5
+Appendix B: Analysis Models5
+Appendix C: To Be Determined List6
+Revision History
+Name
+Date
+Reason For Changes
+Version
+Initial draft
+1.0
+1. Introduction
+1.1 Purpose
+This document specifies the software requirements for Version 1.0 of the Citizen Grievance Redressal System for Municipal Corporation, a web and mobile-based portal that enables citizens to report civic issues -- such as service delays, corruption, and administrative failures -- directly to the concerned municipal department, and to track those complaints through to resolution. This SRS covers the complete platform, including the citizen-facing grievance-filing application, the officer workflow console, the administrator management panel, and the live reporting/analytics dashboard. It is intended to serve as the authoritative reference for the design, development, and testing of the system.
+1.2 Document Conventions
+This document follows standard IEEE template conventions for SRS writing:
+Mandatory functional and non-functional requirements use explicit terms such as "shall" or "must".
+Headings use a numbered hierarchy (e.g., 4.1, 4.1.1).
+Individual functional requirements are labeled with a unique tag of the form REQ-<Feature Abbreviation>-<Number> (e.g., REQ-GRV-1) so they can be traced through design, implementation, and test artifacts.
+Font styling retains clear distinction between major headings and body content.
+1.3 Intended Audience and Reading Suggestions
+This document is intended for the following readers:
+1. Project supervisor / evaluator (Software Engineering course):
+To guide implementation of the MERN-based web/mobile applications, geo-tagged media capture, and department-routing workflow.
+To assess completeness and correctness of the specification.
+2. Project Managers & Testers:
+To verify functional integrity, non-functional performance benchmarks, and user acceptance criteria.
+QA/testers -- to derive test cases directly from the functional requirements.
+To understand what must be built and why.
+3. Municipal Corporation Staff & Ward Officers:
+To understand feature offerings, escalation rules, and operational flow.
+Department heads and ward officers act as prospective administrators and grievance handlers on the platform.
+Citizens as end users of the grievance-filing and tracking interface.
+1.4 Product Scope
+Urban local bodies and municipal corporations in India routinely receive complaints about civic amenities -- potholes, garbage collection, streetlight outages, water supply, drainage, and instances of corruption or administrative inaction -- yet most corporations still rely on manual registers, phone calls, or in-person visits to log these issues. This results in complaints going unrecorded, no accountability for resolution timelines, difficulty proving that an issue was ever reported, and citizen frustration that discourages future reporting.
+The Citizen Grievance Redressal System for Municipal Corporation is a portal that digitizes the entire grievance lifecycle, from citizen reporting (with geo-tagged photographic evidence) through department assignment, officer resolution, and citizen feedback. Its goals are to reduce the friction between citizens and the government when voicing civic problems, create a transparent and time-stamped public record of every complaint, route issues automatically to the correct department, and give citizens visibility into the status of their complaint at every stage. The product is intended to be deployable by a municipal corporation at low operating cost, using cloud-hosted infrastructure and pay-as-you-go third-party services.
+1.5 References
+The Constitution (Seventy-Fourth Amendment) Act, 1992, and the respective State Municipal Corporation Act governing the functions and duties of urban local bodies.
+Right to Public Services Act (state-specific enactments) mandating time-bound delivery of government services.
+The Prevention of Corruption Act, 1988, relevant to complaints alleging administrative corruption.
+Right to Information Act, 2005 -- basis for public accountability and record transparency.
+Information Technology Act, 2000 (India) and IT (Reasonable Security Practices) Rules, 2011.
+Digital Personal Data Protection Act, 2023 (India).
+IEEE Std 830-1998, IEEE Recommended Practice for Software Requirements Specifications (template basis for this document).
+NIST FIPS 197 (AES) and RFC 8446 (TLS 1.3) -- referenced cryptographic standards.
+2. Overall Description
+2.1 Product Perspective
+The Citizen Grievance Redressal System is a new, self-contained, cloud-hosted portal; it is not a follow-on to an existing internal system. Each municipal corporation is provisioned as an isolated tenant, with data further scoped by ward and department within that tenant. The system interacts with three categories of actors: citizens (grievance filers), municipal officers (department-level resolvers), and administrators (corporation-level supervisors), along with supporting third-party services such as the image/media hosting provider, SMS/email notification gateways, and map/geolocation services. At a high level, the platform consists of a citizen-facing web/mobile application, an officer workflow console, an administrator management panel, a department-assignment/routing engine, and a live dashboard and analytics module. These components communicate over encrypted channels and are described further in Section 3.
+2.2 Product Functions
+At a high level, the platform must allow the system to:
+Onboard a municipal corporation, its wards, its departments, and its officer roster.
+Let citizens register/log in and file a grievance with a description, category, and one or more geo-tagged photographs of the issue.
+Automatically capture the GPS location and timestamp of each submitted photo and pin it on a map.
+Route each grievance to the correct department, either automatically (based on category and ward) or via manual reassignment by an administrator.
+Allow officers to update grievance status, add resolution remarks and proof-of-resolution photos, and close a grievance.
+Let citizens track the real-time status of their grievance from submission through resolution.
+Provide a live public/administrative dashboard showing open, in-progress, and resolved grievances by ward, department, and category.
+Collect citizen feedback and a satisfaction rating once a grievance is marked resolved, and allow reopening if unresolved.
+Send automated status-change notifications to citizens over email/SMS/push notification.
+2.3 User Classes and Characteristics
+User Class
+Description
+Key Characteristics
+Citizen
+A resident who files grievances about civic issues in their ward and tracks their resolution.
+Requires a simple, mobile-first interface; varying digital literacy; occasional/one-time use per issue.
+Officer
+Municipal department staff responsible for investigating and resolving grievances assigned to their department.
+Moderate technical expertise; accountable for resolution turnaround time; uses the console regularly.
+Admin
+Municipal Corporation administrator who onboards departments/officers, oversees SLA compliance, and reassigns grievances.
+High technical/administrative expertise; corporation-wide (super-admin) access; monitors the live dashboard.
+The Citizen and Officer classes are the most important to satisfy, since citizen trust and resolution turnaround time are the platform's primary success metrics.
+2.4 Operating Environment
+Client: Modern evergreen web browsers (Chrome, Safari, Edge, Firefox -- last two major versions) on desktop and mobile; a responsive React web app usable as the primary mobile experience, with native app packaging (Android 9+ / iOS 14+) considered for a later version.
+Server: Cloud-hosted Node.js/Express backend on containerized infrastructure with autoscaling (e.g., AWS/Azure/GCP), deployed within an Indian data-residency-compliant region.
+Database: MongoDB (Atlas or self-hosted) for all transactional and geospatial data, using a 2dsphere index for location-based queries.
+Media storage: ImageKit for geo-tagged photo upload, storage, transformation, and delivery.
+Third-party services: SMS gateway, transactional email service, and a map/geocoding provider, each accessed over secure APIs.
+2.5 Design and Implementation Constraints
+Budget Constraints:
+The system must be operable using free-tier or low-cost cloud infrastructure (MongoDB Atlas, ImageKit, Node hosting) suitable for a municipal corporation pilot deployment.
+Third-party SMS/email usage must be minimized or batched to control per-notification cost.
+Legal / Statutory Standards:
+Must comply with the applicable State Municipal Corporation Act and Right to Public Services Act provisions on time-bound grievance redressal.
+Must comply with the Digital Personal Data Protection Act, 2023 and IT Act, 2000 data-security rules for storage and processing of citizen PII and location data.
+End-to-end transport encryption is mandatory: TLS 1.3 for data in transit; AES-256 for sensitive data at rest.
+Accessibility:
+Must support a multilingual UI (English, Hindi, and regional languages relevant to the deploying state) and be usable by citizens with limited digital literacy.
+2.6 User Documentation
+An online help center / FAQ covering how to register, file a grievance, and track its status.
+An Officer & Admin handbook covering department setup, grievance triage, and SLA/escalation rules.
+Short in-app walkthroughs (multilingual) for first-time citizens on how to capture and submit a geo-tagged photo.
+An API reference document for future integrations with the corporation's existing e-governance systems.
+2.7 Assumptions and Dependencies
+Assumes the municipal corporation provides an accurate list of wards, departments, and officer assignments prior to go-live.
+Assumes citizens' mobile numbers/email addresses are valid and reachable for OTP login and status notifications.
+Depends on ImageKit, the SMS/email gateway, and the map/geocoding provider maintaining their published SLAs; an outage in any of these could delay grievance submission or notifications.
+Assumes the citizen's device has camera and location-services permissions enabled at the time of filing a grievance; grievances cannot be geo-tagged without this.
+Assumes internet connectivity is available to the citizen at the time of filing; an assisted-filing kiosk at ward offices is out of scope for this version unless otherwise noted as a future requirement.
+3. External Interface Requirements
+3.1 User Interfaces
+The platform provides three primary user interfaces, all following a consistent design system, multilingual labeling, and a high-contrast accessibility mode:
+Citizen App (web + mobile-responsive): login/registration screen (OTP), grievance-filing form with camera/geo-tag capture, "My Grievances" status-tracking screen, and a feedback/rating screen.
+Officer Console (web): assigned-grievance queue, grievance detail view with map location and photos, status-update form with resolution remarks/proof photo, and a personal SLA tracker.
+Admin Dashboard (web): live map/heatmap of all grievances, department and officer management, manual reassignment tool, and analytics/export screen.
+Every screen must expose a persistent help/support action, display the current language selector, and follow WCAG 2.1 AA accessibility guidelines given the varied digital literacy of the citizen user base.
+3.2 Hardware Interfaces
+The system has no dedicated hardware of its own. It must interoperate with the standard input hardware of citizens' and officers' devices (camera and GPS/location sensor for geo-tagged photo capture, touchscreen/keyboard for form entry). No specialized municipal hardware is required for this version.
+3.3 Software Interfaces
+Interface
+Purpose
+Data Exchanged
+ImageKit Media API
+Upload, store, transform, and deliver geo-tagged grievance photos and resolution-proof photos.
+Image file, signed upload token, returned URL and file ID.
+Map / Geocoding API
+Convert device GPS coordinates into a human-readable address and render grievance locations on the dashboard map.
+Latitude/longitude, resolved address string.
+Email OTP / Transactional Email Service
+Deliver login OTPs and status-change notifications.
+Recipient email, message template, delivery status.
+SMS Gateway
+Deliver OTPs and status-change alerts to citizens without smartphone access.
+Recipient number, message body, delivery status.
+Push Notification Service
+Deliver in-app/browser status-change alerts.
+Device token, notification payload.
+3.4 Communications Interfaces
+All client-server communication must occur over HTTPS using TLS 1.3.
+REST/HTTPS APIs (JSON payloads) are used for all internal service-to-service and third-party integrations described in Section 3.3.
+Push notifications, SMS, and email are used for asynchronous, out-of-band citizen communications regarding grievance status changes.
+The system must synchronize server time via NTP to ensure timestamps on grievance submission, status changes, and resolution are accurate and consistent.
+4. System Features
+4.1 Feature 1: Grievance Filing & Geo-Tagged Reporting
+Description & Priority: High Priority. Allows a citizen to report a civic issue with a description, category, and photographic evidence that is automatically geo-tagged.
+Stimulus/Response Sequences: Citizen opens app → Logs in via OTP → Fills grievance form (category, description) → Captures photo(s) with location auto-attached → Submits → Receives a tracking ID and confirmation.
+Requirement ID
+Requirement Title
+Description
+REQ-GRV-1
+Grievance Form Submission
+The system must allow a logged-in citizen to submit a grievance with a category, free-text description, ward, and at least one photo.
+REQ-GRV-2
+Geo-Tagging
+The system must automatically capture and attach the device's GPS coordinates and a timestamp to every photo submitted with a grievance.
+REQ-GRV-3
+Unique Tracking ID
+The system shall generate a unique tracking ID for every submitted grievance and display it to the citizen upon submission.
+REQ-GRV-4
+Duplicate Detection
+The system should flag grievances submitted within a configurable radius and time window of an existing open grievance in the same category as a possible duplicate for officer review.
+4.2 Feature 2: Live Dashboard & Status Tracking
+Description & Priority: High Priority. Gives citizens visibility into their own grievance status and gives officers/admins a real-time operational view of all grievances.
+Requirement ID
+Requirement Title
+Description
+REQ-DASH-1
+Citizen Status Tracking
+The system must let a citizen view the current status (Submitted, Assigned, In Progress, Resolved, Reopened) of every grievance they have filed.
+REQ-DASH-2
+Live Map View
+The system shall render all open grievances as pins on a live map, filterable by ward, department, category, and status.
+REQ-DASH-3
+Status Change Log
+The system must record a timestamped history entry for every status change on a grievance, including the actor who made the change.
+REQ-DASH-4
+Real-Time Notification
+The system shall notify the filing citizen by email/SMS/push whenever the status of their grievance changes.
+4.3 Feature 3: Department Assignment & Officer Workflow
+Description & Priority: High Priority. Ensures every grievance reaches the correct department and gives officers the tools to act on and resolve it.
+Requirement ID
+Requirement Title
+Description
+REQ-ASGN-1
+Automatic Department Routing
+The system must automatically assign a newly filed grievance to a department based on its category and ward, using a configurable mapping table.
+REQ-ASGN-2
+Manual Reassignment
+The system shall allow an administrator to manually reassign a grievance to a different department or officer, with a mandatory reason remark.
+REQ-ASGN-3
+Officer Resolution Update
+The system must allow an assigned officer to update grievance status, add remarks, and attach proof-of-resolution photos.
+REQ-ASGN-4
+SLA Escalation
+The system shall automatically flag and escalate to the admin any grievance that remains unresolved beyond its department's configured SLA duration.
+4.4 Feature 4: Citizen Feedback & Closure
+Description & Priority: Medium Priority. Closes the loop by letting citizens confirm resolution and rate their experience.
+Requirement ID
+Requirement Title
+Description
+REQ-FDBK-1
+Resolution Confirmation
+The system must prompt the filing citizen to confirm resolution and submit a satisfaction rating once an officer marks a grievance resolved.
+REQ-FDBK-2
+Reopen Grievance
+The system shall allow a citizen to reopen a grievance within a configurable window if they are not satisfied with the resolution, returning it to the assigned department.
+REQ-FDBK-3
+Feedback Analytics
+The system must aggregate feedback ratings by department and officer for display on the admin analytics screen.
+5. Other Nonfunctional Requirements
+5.1 Performance Requirements
+System Availability: 99.5% uptime, given the platform is used continuously (not restricted to a fixed voting-style window).
+Scalability: Capacity to handle at least 5,000 concurrently active users per municipal corporation tenant without noticeable latency.
+Response Time: Grievance submission (including photo upload) must complete within 10 seconds under normal network conditions.
+5.2 Safety Requirements
+Automated backup and disaster recovery protocols to prevent loss of grievance records or associated evidence photos.
+5.3 Security Requirements
+Data Encryption: TLS 1.3 for data in transit and AES-256 for sensitive data (citizen PII, contact details) at rest.
+Authentication: OTP-based login for citizens; role-based access control distinguishing Citizen, Officer, and Admin permissions.
+Audit Logging: Every status change and reassignment action must be attributable to an authenticated user and permanently recorded.
+5.4 Software Quality Attributes
+Accessibility: UI/UX optimized for varying digital literacy, with multilingual support (English, Hindi, and applicable regional languages).
+Usability: A citizen must be able to file a grievance, from opening the app to submission, in under 3 minutes.
+Reliability: No single point of failure should prevent grievance submission or status viewing during normal operation.
+5.5 Business Rules
+Transparency: Every grievance and its status history must be viewable by the filing citizen and by administrators for audit purposes.
+SLA Compliance: Each department must have a configurable maximum resolution time, with automatic escalation on breach.
+Accountability: A grievance cannot be marked resolved without an assigned officer's remark and, where applicable, a proof-of-resolution photo.
+6. Other Requirements
+Database design must isolate data per municipal-corporation tenant to strictly prevent cross-corporation data leakage, while preserving corporation-wide administrative reporting capabilities.
+Appendix A: Glossary
+SLA: Service Level Agreement -- the maximum time allowed for a department to resolve a grievance.
+OTP: One-Time Password.
+Geo-tagging: Attaching geographic location data (latitude/longitude) to a piece of media, such as a photo.
+Ward: An administrative sub-division of a municipal corporation used for geographic routing of grievances.
+Tenant: An isolated instance of the platform's data belonging to a single municipal corporation.
+Appendix B: Analysis Models
+(Data flow diagrams, entity-relationship diagrams, and use case models will be attached in supplementary technical documentation.)
+Appendix C: To Be Determined List
+1. Finalization of the department-to-category routing rules for corporations with non-standard department structures.
+2. Decision on native mobile app packaging (Android/iOS) versus responsive web-only delivery for Version 1.0.

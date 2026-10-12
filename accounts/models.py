@@ -12,6 +12,7 @@ class User(AbstractUser):
 
     # REQ-AUTH-003: e-mail must be unique across accounts.
     email = models.EmailField("email address", unique=True)
+    phone = models.CharField(max_length=20, blank=True, default="")
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.CITIZEN)
 
     class Meta:
@@ -80,3 +81,23 @@ class LoginAudit(models.Model):
 
     def __str__(self):
         return f"{self.timestamp:%Y-%m-%d %H:%M:%S} {self.username} {self.outcome}"
+
+
+class OTPToken(models.Model):
+    """REQ-AUTH / SRS 4.1: Citizen OTP authentication."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="otp_tokens")
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_valid(self):
+        from django.utils import timezone
+        return not self.is_used and timezone.now() <= self.expires_at
+
+    def __str__(self):
+        return f"OTP for {self.user.username} ({self.code})"

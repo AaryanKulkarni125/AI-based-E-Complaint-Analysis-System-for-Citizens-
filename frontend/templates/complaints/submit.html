@@ -1,30 +1,118 @@
 {% extends "base.html" %}
-{% block title %}Submit a complaint{% endblock %}
+{% block title %}Submit a Complaint{% endblock %}
 {% block content %}
 <div class="card form-card wide">
-  <h1>Submit a complaint</h1>
-  <p class="muted">Describe the problem. Your complaint is routed to an officer automatically and you'll get a tracking ID straight away.</p>
+  <h1>Submit a Civic Grievance</h1>
+  <p class="muted">File your issue with photographs and location. Our AI pipeline categorizes the issue and routes it directly to the designated department.</p>
 
-  <form method="post" enctype="multipart/form-data" novalidate data-once>
+  <form method="post" enctype="multipart/form-data" novalidate data-once id="complaint-submit-form">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
       <div class="alert alert-error" role="alert">{{ form.non_field_errors }}</div>
     {% endif %}
 
-    {% for field in form %}
-      <div class="field {% if field.errors %}has-error{% endif %}">
-        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
-        {{ field }}
-        {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
-        {{ field.errors }}
-      </div>
-    {% endfor %}
+    {{ form.latitude }}
+    {{ form.longitude }}
 
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Submit complaint</button>
+    <div class="grid-2">
+      <div class="field {% if form.ward.errors %}has-error{% endif %}">
+        <label for="{{ form.ward.id_for_label }}">Administrative Ward <span class="req">*</span></label>
+        {{ form.ward }}
+        {% if form.ward.help_text %}<div class="help">{{ form.ward.help_text }}</div>{% endif %}
+        {{ form.ward.errors }}
+      </div>
+
+      <div class="field {% if form.category.errors %}has-error{% endif %}">
+        <label for="{{ form.category.id_for_label }}">Department Category</label>
+        {{ form.category }}
+        {% if form.category.help_text %}<div class="help">{{ form.category.help_text }}</div>{% endif %}
+        {{ form.category.errors }}
+      </div>
+    </div>
+
+    <div class="field {% if form.location.errors %}has-error{% endif %}">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <label for="{{ form.location.id_for_label }}" style="margin: 0;">Location / Street Address <span class="req">*</span></label>
+        <button type="button" id="geo-btn" class="btn btn-sm btn-ghost" style="color: var(--primary);">
+          📍 Auto-Detect Location (GPS)
+        </button>
+      </div>
+      {{ form.location }}
+      <div id="geo-status" class="help" style="display: none; color: var(--success); font-weight: 500;"></div>
+      {% if form.location.help_text %}<div class="help">{{ form.location.help_text }}</div>{% endif %}
+      {{ form.location.errors }}
+    </div>
+
+    <div class="field {% if form.description.errors %}has-error{% endif %}">
+      <label for="{{ form.description.id_for_label }}">Description <span class="req">*</span></label>
+      {{ form.description }}
+      <div style="display: flex; justify-content: space-between;">
+        <span class="help">{{ form.description.help_text }}</span>
+        <span id="char-counter" class="help">0 characters</span>
+      </div>
+      {{ form.description.errors }}
+    </div>
+
+    <div class="field {% if form.attachments.errors %}has-error{% endif %}">
+      <label for="{{ form.attachments.id_for_label }}">Photographic Evidence / Attachments</label>
+      {{ form.attachments }}
+      {% if form.attachments.help_text %}<div class="help">{{ form.attachments.help_text }}</div>{% endif %}
+      {{ form.attachments.errors }}
+    </div>
+
+    <div class="form-actions" style="margin-top: 24px;">
+      <button type="submit" class="btn btn-primary">Submit Grievance</button>
       <a class="btn btn-ghost" href="{% url 'accounts:dashboard' %}">Cancel</a>
     </div>
   </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Geolocation auto-detection (REQ-GRV-2)
+  var geoBtn = document.getElementById("geo-btn");
+  var geoStatus = document.getElementById("geo-status");
+  var latInput = document.getElementById("id_latitude");
+  var lngInput = document.getElementById("id_longitude");
+  var locInput = document.getElementById("id_location");
+
+  if (geoBtn && navigator.geolocation) {
+    geoBtn.addEventListener("click", function () {
+      geoStatus.style.display = "block";
+      geoStatus.textContent = "Acquiring satellite GPS coordinates…";
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          var lat = pos.coords.latitude.toFixed(6);
+          var lng = pos.coords.longitude.toFixed(6);
+          if (latInput) latInput.value = lat;
+          if (lngInput) lngInput.value = lng;
+          geoStatus.textContent = "✓ GPS Geo-Tagged: Latitude " + lat + ", Longitude " + lng;
+          if (locInput && !locInput.value.trim()) {
+            locInput.value = "GPS Location: " + lat + ", " + lng;
+          }
+        },
+        function (err) {
+          geoStatus.style.color = "var(--danger)";
+          geoStatus.textContent = "Could not acquire GPS: " + err.message + ". Please type address manually.";
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    });
+  }
+
+  // Live character counter for description
+  var descArea = document.getElementById("id_description");
+  var counter = document.getElementById("char-counter");
+  if (descArea && counter) {
+    var updateCount = function () {
+      var len = descArea.value.length;
+      counter.textContent = len + " / 20 min characters";
+      counter.style.color = len >= 20 ? "var(--success)" : "var(--muted)";
+    };
+    descArea.addEventListener("input", updateCount);
+    updateCount();
+  }
+</script>
 {% endblock %}

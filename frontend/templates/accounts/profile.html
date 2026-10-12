@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>User Profile & Account Settings</h1>
+    <p class="muted">Manage your personal information and credentials (REQ-PRF-001..004).</p>
+  </div>
+  <div>
+    <a href="{% url 'accounts:password_change' %}" class="btn">Change Password</a>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h2>Account Information</h2>
+    <div class="details-list" style="margin-top: 16px;">
+      <div class="item">
+        <span class="label">Username:</span>
+        <span class="val"><b>{{ user.username }}</b></span>
+      </div>
+      <div class="item">
+        <span class="label">Assigned Role:</span>
+        <span class="val"><span class="badge badge-role">{{ user.get_role_display }}</span></span>
+      </div>
+      <div class="item">
+        <span class="label">Account Status:</span>
+        <span class="val"><span class="badge badge-status">{{ user.account_status }}</span></span>
+      </div>
+      {% if user.is_officer %}
+        <div class="item">
+          <span class="label">Department:</span>
+          <span class="val">{{ user.officer_profile.department }}</span>
+        </div>
+        <div class="item">
+          <span class="label">Availability:</span>
+          <span class="val">{{ user.officer_profile.get_availability_status_display }}</span>
+        </div>
+        <div class="item">
+          <span class="label">Active Workload:</span>
+          <span class="val">{{ user.officer_profile.workload }} open complaints</span>
+        </div>
+      {% endif %}
+      <div class="item">
+        <span class="label">Member Since:</span>
+        <span class="val">{{ user.date_joined|date:"j M Y" }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Edit Profile Details</h2>
+    <form method="post" novalidate style="margin-top: 16px;">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-error">{{ form.non_field_errors.0 }}</div>
+      {% endif %}
+
+      <div class="field {% if form.first_name.errors %}has-error{% endif %}">
+        <label for="{{ form.first_name.id_for_label }}">First Name</label>
+        {{ form.first_name }}
+        {{ form.first_name.errors }}
+      </div>
+
+      <div class="field {% if form.last_name.errors %}has-error{% endif %}">
+        <label for="{{ form.last_name.id_for_label }}">Last Name</label>
+        {{ form.last_name }}
+        {{ form.last_name.errors }}
+      </div>
+
+      <div class="field {% if form.email.errors %}has-error{% endif %}">
+        <label for="{{ form.email.id_for_label }}">Email Address <span class="req">*</span></label>
+        {{ form.email }}
+        {{ form.email.errors }}
+      </div>
+
+      <div class="field {% if form.phone.errors %}has-error{% endif %}">
+        <label for="{{ form.phone.id_for_label }}">Phone Number</label>
+        {{ form.phone }}
+        {{ form.phone.errors }}
+      </div>
+
+      <div class="form-actions" style="margin-top: 16px;">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

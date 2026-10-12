@@ -1,6 +1,15 @@
 from django.contrib import admin
 
-from .models import Attachment, Category, Complaint, StatusHistory
+from .models import (
+    AIOverrideLog,
+    AssignmentLog,
+    Attachment,
+    Category,
+    Complaint,
+    Feedback,
+    NotificationLog,
+    StatusHistory,
+)
 
 
 class AttachmentInline(admin.TabularInline):
@@ -18,12 +27,43 @@ class HistoryInline(admin.TabularInline):
 
 @admin.register(Complaint)
 class ComplaintAdmin(admin.ModelAdmin):
-    list_display = ("reference", "citizen", "status", "priority", "assigned_officer", "submitted_at")
-    list_filter = ("status", "priority")
+    list_display = (
+        "reference", "citizen", "category", "ward", "status", "priority",
+        "assigned_officer", "is_sla_breached", "submitted_at"
+    )
+    list_filter = ("status", "priority", "ward", "category")
+    search_fields = ("description", "location")
     inlines = [AttachmentInline, HistoryInline]
 
     def has_delete_permission(self, request, obj=None):
         return False  # REQ-WFL-006: complaints are never deleted
 
 
-admin.site.register(Category)
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "department_name", "sla_hours")
+
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ("complaint", "citizen", "rating", "created_at")
+    list_filter = ("rating",)
+
+
+@admin.register(AssignmentLog)
+class AssignmentLogAdmin(admin.ModelAdmin):
+    list_display = ("complaint", "from_officer", "to_officer", "assigned_by", "timestamp")
+    readonly_fields = ("timestamp",)
+
+
+@admin.register(AIOverrideLog)
+class AIOverrideLogAdmin(admin.ModelAdmin):
+    list_display = ("complaint", "original_category", "corrected_category", "actor", "timestamp")
+    readonly_fields = ("timestamp",)
+
+
+@admin.register(NotificationLog)
+class NotificationLogAdmin(admin.ModelAdmin):
+    list_display = ("recipient", "channel", "subject", "status", "retry_count", "timestamp")
+    list_filter = ("status", "channel")
+    readonly_fields = ("timestamp",)

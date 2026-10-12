@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Verify OTP Code{% endblock %}
+{% block content %}
+<div class="card form-card">
+  <h1>Enter Verification Code</h1>
+  <p class="muted">Please enter the 6-digit code sent to your registered address for user <b>{{ user.username }}</b>.</p>
+
+  <form method="post" novalidate data-once>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="alert alert-error" role="alert">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+
+    <div class="field {% if form.otp_code.errors %}has-error{% endif %}">
+      <label for="{{ form.otp_code.id_for_label }}">6-Digit Code <span class="req" aria-hidden="true">*</span></label>
+      {{ form.otp_code }}
+      {{ form.otp_code.errors }}
+      <small class="muted">The verification code expires in 10 minutes.</small>
+    </div>
+
+    <div class="form-actions" style="margin-top: 20px;">
+      <button type="submit" class="btn btn-primary btn-block">Verify & Log In</button>
+    </div>
+  </form>
+
+  <p class="form-foot">Didn't receive code? <a href="{% url 'accounts:otp_request' %}">Request a new code</a></p>
+</div>
+{% endblock %}

@@ -1,47 +1,72 @@
 {% extends "base.html" %}
-{% block title %}Assigned complaints{% endblock %}
+{% block title %}Assigned Queue · Officer Console{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Assigned complaints</h1>
-    <p class="muted">Complaints routed to you. Open one to acknowledge it, work on it and resolve it.</p>
+    <h1>Assigned Grievance Queue</h1>
+    <p class="muted">Complaints routed to your department. Advance through investigation, take action, and record resolution remarks.</p>
   </div>
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="num">{{ counts.pending }}</div><div class="lbl">Pending</div></div>
-  <div class="stat"><div class="num">{{ counts.resolved }}</div><div class="lbl">Resolved / closed</div></div>
+  <div class="stat"><div class="num text-info">{{ counts.pending }}</div><div class="lbl">Pending Action</div></div>
+  <div class="stat"><div class="num text-success">{{ counts.resolved }}</div><div class="lbl">Resolved / Closed</div></div>
 </div>
 
-<nav class="filters" aria-label="Filter by status">
-  <a class="chip {% if not active_status %}active{% endif %}" href="?sort={{ sort }}">All</a>
-  {% for value, label in statuses %}
-    <a class="chip {% if active_status == value %}active{% endif %}" href="?status={{ value }}&sort={{ sort }}">{{ label }}</a>
-  {% endfor %}
-</nav>
-<nav class="filters" aria-label="Sort order">
-  <span class="muted">Sort by:</span>
-  <a class="chip {% if sort == 'priority' %}active{% endif %}" href="?sort=priority{% if active_status %}&status={{ active_status }}{% endif %}">Priority</a>
-  <a class="chip {% if sort == 'date' %}active{% endif %}" href="?sort=date{% if active_status %}&status={{ active_status }}{% endif %}">Newest first</a>
-</nav>
+<div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;">
+  <nav class="filters" aria-label="Filter by status">
+    <span class="muted" style="font-size: 0.9rem;">Status:</span>
+    <a class="chip {% if not active_status %}active{% endif %}" href="?sort={{ sort }}">All</a>
+    {% for value, label in statuses %}
+      <a class="chip {% if active_status == value %}active{% endif %}" href="?status={{ value }}&sort={{ sort }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
+
+  <nav class="filters" aria-label="Sort order">
+    <span class="muted" style="font-size: 0.9rem;">Sort:</span>
+    <a class="chip {% if sort == 'priority' %}active{% endif %}" href="?sort=priority{% if active_status %}&status={{ active_status }}{% endif %}">Priority (High first)</a>
+    <a class="chip {% if sort == 'date' %}active{% endif %}" href="?sort=date{% if active_status %}&status={{ active_status }}{% endif %}">Newest first</a>
+  </nav>
+</div>
 
 <div class="table-wrap">
   <table>
     <thead>
-      <tr><th>Tracking ID</th><th>Citizen</th><th>Location</th><th>Priority</th><th>Submitted</th><th>Status</th></tr>
+      <tr>
+        <th>Tracking ID</th>
+        <th>Category</th>
+        <th>Ward</th>
+        <th>Citizen</th>
+        <th>Priority</th>
+        <th>Submitted</th>
+        <th>SLA Status</th>
+        <th>Current Status</th>
+        <th>Action</th>
+      </tr>
     </thead>
     <tbody>
       {% for c in complaints %}
         <tr>
-          <td><a href="{% url 'complaints:detail' c.pk %}">{{ c.reference }}</a></td>
+          <td><a href="{% url 'complaints:detail' c.pk %}"><b>{{ c.reference }}</b></a></td>
+          <td>{{ c.category.name|default:"General" }}</td>
+          <td>{{ c.ward }}</td>
           <td>{{ c.citizen.get_full_name|default:c.citizen.username }}</td>
-          <td>{{ c.location }}</td>
-          <td><span class="badge badge-{{ c.priority }}">{{ c.get_priority_display }}</span></td>
+          <td><span class="badge badge-priority-{{ c.priority }}">{{ c.get_priority_display }}</span></td>
           <td>{{ c.submitted_at|date:"j M Y, H:i" }}</td>
-          <td><span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span></td>
+          <td>
+            {% if c.is_sla_breached %}
+              <span class="badge badge-danger">Breached</span>
+            {% elif c.is_open %}
+              <span class="badge badge-info">{{ c.sla_remaining_hours }}h left</span>
+            {% else %}
+              <span class="badge badge-success">Met</span>
+            {% endif %}
+          </td>
+          <td><span class="badge badge-status-{{ c.status }}">{{ c.get_status_display }}</span></td>
+          <td><a href="{% url 'complaints:detail' c.pk %}" class="btn btn-sm btn-primary">Process</a></td>
         </tr>
       {% empty %}
-        <tr><td colspan="6" class="empty">
+        <tr><td colspan="9" class="empty">
           {% if active_status %}No complaints with this status.{% else %}No complaints have been assigned to you yet.{% endif %}
         </td></tr>
       {% endfor %}

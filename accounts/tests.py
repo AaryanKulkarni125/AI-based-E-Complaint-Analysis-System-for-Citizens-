@@ -161,3 +161,147 @@ class RegistrationTests(TestCase):
         self.register("admin", registration_code="SYSADMIN-DEV-2026")
         self.assertFalse(User.objects.exists())
         cache.clear()
+
+
+class ProfileAndSecurityTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="testcitizen",
+            email="citizen@example.com",
+            password="StrongPassword123",
+            role=User.Role.CITIZEN,
+            first_name="Test",
+            last_name="Citizen",
+            phone="9876543210",
+        )
+        self.client.force_login(self.user)
+
+    def test_view_profile(self):
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "testcitizen")
+        self.assertContains(response, "citizen@example.com")
+
+    def test_edit_profile_success(self):
+        response = self.client.post(
+            reverse("accounts:profile"),
+            {
+                "first_name": "Updated",
+                "last_name": "Name",
+                "email": "updated@example.com",
+                "phone": "9998887776",
+            },
+        )
+        self.assertRedirects(response, reverse("accounts:profile"))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, "Updated")
+        self.assertEqual(self.user.email, "updated@example.com")
+        self.assertEqual(self.user.phone, "9998887776")
+
+    def test_edit_profile_duplicate_email_rejected(self):
+        User.objects.create_user(
+            username="otheruser",
+            email="existing@example.com",
+            password="StrongPassword123",
+        )
+        response = self.client.post(
+            reverse("accounts:profile"),
+            {
+                "first_name": "Test",
+                "last_name": "Citizen",
+                "email": "existing@example.com",
+                "phone": "9876543210",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "already in use")
+
+    def test_change_password_success(self):
+        response = self.client.post(
+            reverse("accounts:password_change"),
+            {
+                "current_password": "StrongPassword123",
+                "new_password1": "NewPassw0rd99!",
+                "new_password2": "NewPassw0rd99!",
+            },
+        )
+        self.assertRedirects(response, reverse("accounts:profile"))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("NewPassw0rd99!"))
+
+    def test_change_password_wrong_current_rejected(self):
+        response = self.client.post(
+            reverse("accounts:password_change"),
+            {
+                "current_password": "WrongPassword99",
+                "new_password1": "NewPassw0rd99!",
+                "new_password2": "NewPassw0rd99!",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Current password is incorrect.")
+
+    def test_password_reset_request(self):
+        self.client.logout()
+        response = self.client.post(
+            reverse("accounts:password_reset"),
+            {"email": "citizen@example.com"},
+        )
+        self.assertRedirects(response, reverse("accounts:login"))
+
+
+class OTPAuthenticationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="otpuser",
+            email="otpuser@example.com",
+            password="StrongPassw0rd123",
+            role=User.Role.CITIZEN,
+            phone="9123456789",
+        )
+
+    def test_request_otp_generates_token(self):
+        from accounts.models import OTPToken
+
+        response = self.client.post(
+            reverse("accounts:otp_request"),
+            {"identifier": "otpuser@example.com"},
+        )
+        self.assertRedirects(response, reverse("accounts:otp_verify"))
+        token = OTPToken.objects.filter(user=self.user).first()
+        self.assertIsNotNone(token)
+        self.assertEqual(len(token.code), 6)
+        self.assertTrue(token.is_valid())
+
+    def test_verify_valid_otp_logs_in(self):
+        from accounts.models import OTPToken
+
+        self.client.post(
+            reverse("accounts:otp_request"),
+            {"identifier": "otpuser"},
+        )
+        token = OTPToken.objects.get(user=self.user)
+        response = self.client.post(
+            reverse("accounts:otp_verify"),
+            {"otp_code": token.code},
+        )
+        self.assertRedirects(response, reverse("accounts:dashboard"))
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+        token.refresh_from_db()
+        self.assertTrue(token.is_used)
+
+    def test_invalid_otp_rejected(self):
+        from accounts.models import LoginAudit
+
+        self.client.post(
+            reverse("accounts:otp_request"),
+            {"identifier": "otpuser"},
+        )
+        response = self.client.post(
+            reverse("accounts:otp_verify"),
+            {"otp_code": "000000"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Invalid or expired")
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertTrue(LoginAudit.objects.filter(username="otpuser", outcome="failed").exists())

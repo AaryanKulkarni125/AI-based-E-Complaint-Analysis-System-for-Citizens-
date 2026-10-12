@@ -2,8 +2,8 @@
 {% block title %}Log in{% endblock %}
 {% block content %}
 <div class="card form-card">
-  <h1>Log in</h1>
-  <p class="muted">Citizens, officers and system administrators log in here.</p>
+  <h1>Sign in to Your Account</h1>
+  <p class="muted">Access role-based grievance services for Citizens, Officers, and Administrators.</p>
 
   <form method="post" novalidate data-once>
     {% csrf_token %}
@@ -20,16 +20,27 @@
     </div>
 
     <div class="field {% if form.password.errors %}has-error{% endif %}">
-      <label for="{{ form.password.id_for_label }}">Password <span class="req" aria-hidden="true">*</span></label>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <label for="{{ form.password.id_for_label }}">Password <span class="req" aria-hidden="true">*</span></label>
+        <a href="{% url 'accounts:password_reset' %}" class="small-link">Forgot password?</a>
+      </div>
       {{ form.password }}
       {{ form.password.errors }}
     </div>
 
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Log in</button>
+    <div class="form-actions" style="margin-top: 20px;">
+      <button type="submit" class="btn btn-primary btn-block">Log in with Password</button>
     </div>
   </form>
 
-  <p class="form-foot">New here? <a href="{% url 'accounts:register_choice' %}">Create an account</a></p>
+  <div class="separator-text"><span>OR</span></div>
+
+  <div style="text-align: center; margin-bottom: 20px;">
+    <a href="{% url 'accounts:otp_request' %}" class="btn btn-secondary btn-block">
+      📲 Sign in with One-Time Password (OTP)
+    </a>
+  </div>
+
+  <p class="form-foot">New citizen or municipal staff? <a href="{% url 'accounts:register_choice' %}">Create an account</a></p>
 </div>
 {% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Notification Delivery Logs{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Notification Logs & Delivery Status (REQ-NOT-004/005)</h1>
+    <p class="muted">Audit trail of outbound Email, SMS, and Push notifications dispatched to citizens and officers.</p>
+  </div>
+  <div>
+    <form method="post" action="{% url 'complaints:admin_retry_notifications' %}" class="inline-form">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">🔄 Retry Failed Notifications ({{ failed_count }})</button>
+    </form>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Complaint</th>
+        <th>Channel</th>
+        <th>Recipient</th>
+        <th>Subject</th>
+        <th>Status</th>
+        <th>Retries</th>
+        <th>Error Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in logs %}
+        <tr>
+          <td>{{ l.timestamp|date:"j M Y, H:i:s" }}</td>
+          <td>
+            {% if l.complaint %}
+              <a href="{% url 'complaints:detail' l.complaint.pk %}"><b>{{ l.complaint.reference }}</b></a>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td><span class="badge badge-role">{{ l.get_channel_display }}</span></td>
+          <td>{{ l.recipient }}</td>
+          <td>{{ l.subject|truncatechars:35 }}</td>
+          <td>
+            {% if l.status == "sent" %}
+              <span class="badge badge-success">Delivered</span>
+            {% elif l.status == "failed" %}
+              <span class="badge badge-danger">Failed</span>
+            {% else %}
+              <span class="badge badge-warning">Pending</span>
+            {% endif %}
+          </td>
+          <td>{{ l.retry_count }}</td>
+          <td><small class="muted">{{ l.error_message|default:"—"|truncatechars:40 }}</small></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="empty">No notification logs recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

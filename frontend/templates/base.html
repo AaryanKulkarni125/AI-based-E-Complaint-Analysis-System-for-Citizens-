@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}E-Complaint System{% endblock %} · AI-Powered E-Complaint System</title>
+  <title>{% block title %}E-Complaint System{% endblock %} · AI-Powered Citizen Grievance Redressal</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -13,28 +14,47 @@
     <div class="container header-inner">
       <a class="brand" href="{% url 'home' %}">
         <span class="brand-mark" aria-hidden="true">EC</span>
-        <span>E-Complaint System</span>
+        <span>E-Complaint Portal</span>
       </a>
 
-      <nav class="main-nav" aria-label="Main">
+      <nav class="main-nav" aria-label="Main Navigation">
         {% if user.is_authenticated %}
           <a href="{% url 'accounts:dashboard' %}">Dashboard</a>
           {% if user.is_citizen %}
             <a href="{% url 'complaints:submit' %}">Submit complaint</a>
-            <a href="{% url 'complaints:my_list' %}">My complaints</a>
+            <a href="{% url 'complaints:my_list' %}">My grievances</a>
           {% elif user.is_officer %}
-            <a href="{% url 'complaints:officer_list' %}">Assigned complaints</a>
+            <a href="{% url 'complaints:officer_list' %}">Assigned queue</a>
+          {% elif user.is_system_admin %}
+            <a href="{% url 'complaints:admin_complaint_list' %}">All complaints</a>
+            <a href="{% url 'complaints:admin_map_view' %}">Live map</a>
+            <a href="{% url 'complaints:admin_analytics' %}">Analytics</a>
+            <a href="{% url 'complaints:admin_officer_roster' %}">Officers</a>
+            <a href="{% url 'complaints:admin_notification_logs' %}">Notifications</a>
           {% endif %}
+          <a href="{% url 'accounts:profile' %}">Profile</a>
           <span class="nav-user">{{ user.get_full_name|default:user.username }}
-            <span class="badge badge-role">{{ user.get_role_display }}</span></span>
+            <span class="badge badge-role badge-{{ user.role }}">{{ user.get_role_display }}</span>
+          </span>
           <form method="post" action="{% url 'accounts:logout' %}" class="inline-form">
             {% csrf_token %}
-            <button type="submit" class="btn btn-ghost">Log out</button>
+            <button type="submit" class="btn btn-ghost btn-sm">Log out</button>
           </form>
         {% else %}
           <a href="{% url 'accounts:login' %}">Log in</a>
-          <a href="{% url 'accounts:register_choice' %}" class="btn btn-primary btn-sm">Create account</a>
+          <a href="{% url 'accounts:otp_request' %}">OTP Login</a>
+          <a href="{% url 'accounts:register_choice' %}" class="btn btn-primary btn-sm">Register</a>
         {% endif %}
+
+        <!-- Language toggle button (REQ-UI) -->
+        <button type="button" id="lang-toggle-btn" class="btn btn-ghost btn-sm" title="Toggle English / Hindi">
+          🌐 <span id="current-lang-label">EN</span>
+        </button>
+
+        <!-- Persistent Help button (REQ-UI) -->
+        <button type="button" id="help-modal-open-btn" class="btn btn-ghost btn-sm" title="Help & Support FAQ">
+          ❓ Help
+        </button>
       </nav>
     </div>
   </header>
@@ -51,8 +71,37 @@
   </main>
 
   <footer class="site-footer">
-    <div class="container">AI-Powered E-Complaint Analysis System for Quick Response to Citizen Complaints</div>
+    <div class="container footer-content">
+      <div>AI-Powered Citizen Grievance Redressal System · Municipal Corporation</div>
+      <div class="muted">Compliant with State Municipal Act & Right to Public Services Act · TLS 1.3 Encryption</div>
+    </div>
   </footer>
+
+  <!-- Persistent Help & Support Modal (REQ-UI / SRS Section 3.1) -->
+  <dialog id="help-modal" class="modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Citizen Grievance Redressal — Help & FAQ</h3>
+        <button type="button" id="help-modal-close-btn" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h4>1. How to File a Complaint?</h4>
+        <p>Log in as a Citizen, click <b>Submit Complaint</b>, specify the ward, enter the location (or use "Auto-Detect Location"), describe the issue in at least 20 characters, and attach photos (JPEG/PNG/PDF up to 5MB). The AI engine automatically classifies the category and urgency.</p>
+
+        <h4>2. How Does Tracking Work?</h4>
+        <p>Every grievance receives a unique tracking ID format (e.g. <code>CMP-000001</code>). You can check real-time status under <b>My Grievances</b>.</p>
+
+        <h4>3. Resolution Confirmation & Reopening</h4>
+        <p>Once an officer marks your grievance as Resolved with proof remarks, you can submit a 1 to 5 star rating. If unsatisfied, you can reopen the complaint within 7 days.</p>
+
+        <h4>4. Municipal Helpline & Contacts</h4>
+        <p>Toll-Free Civic Helpline: <b>1800-111-2026</b> (24x7) | Email: <b>support@municipal.gov.in</b></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="help-modal-ok-btn" class="btn btn-primary btn-sm">Close</button>
+      </div>
+    </div>
+  </dialog>
 
   <script src="{% static 'js/app.js' %}"></script>
   {% block scripts %}{% endblock %}

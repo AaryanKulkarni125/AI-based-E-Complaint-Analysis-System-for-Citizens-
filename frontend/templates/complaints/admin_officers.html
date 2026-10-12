@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Officer Roster · Admin Console{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Municipal Officer Roster & Availability</h1>
+    <p class="muted">Manage grievance resolvers, department assignments, and active duty status (SRS 2.2).</p>
+  </div>
+  <div>
+    <a href="{% url 'accounts:register' 'officer' %}" class="btn btn-primary">+ Register New Officer</a>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Officer Name</th>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Department</th>
+        <th>Current Workload</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in officers %}
+        <tr>
+          <td><b>{{ o.get_full_name|default:o.username }}</b></td>
+          <td>{{ o.username }}</td>
+          <td>{{ o.email }}</td>
+          <td>{{ o.officer_profile.department }}</td>
+          <td><b>{{ o.officer_profile.workload }}</b> open complaints</td>
+          <td>
+            {% if o.officer_profile.availability_status == "active" %}
+              <span class="badge badge-success">Active Duty</span>
+            {% else %}
+              <span class="badge badge-warning">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" action="{% url 'complaints:admin_toggle_officer_status' o.pk %}" class="inline-form">
+              {% csrf_token %}
+              {% if o.officer_profile.availability_status == "active" %}
+                <button type="submit" class="btn btn-sm btn-ghost" style="color: var(--danger);">Set Inactive</button>
+              {% else %}
+                <button type="submit" class="btn btn-sm btn-primary">Set Active</button>
+              {% endif %}
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="empty">No officer accounts found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -49,3 +49,21 @@ class Command(BaseCommand):
                     user=user, defaults={"department": department or "General"}
                 )
             self.stdout.write(f"{'created' if created else 'exists '}  {user.role:8} {username}")
+
+        from complaints.models import Category
+        categories = [
+            ("Roads & Infrastructure", "Roads & Traffic", 48, "Potholes, broken roads, damaged pavements, road cave-ins"),
+            ("Sanitation & Waste Management", "Sanitation", 24, "Garbage piles, dead animals, uncollected bins, litter"),
+            ("Water Supply", "Water Works", 48, "Burst pipes, contaminated water, low water pressure, no water"),
+            ("Drainage & Sewerage", "Drainage", 48, "Sewage overflow, blocked storm drains, missing manhole covers"),
+            ("Electricity & Street Lighting", "Electrical", 24, "Broken streetlights, sparking transformers, dangling wires"),
+            ("Public Health", "Public Health", 36, "Mosquito breeding, stagnant water, stray dog nuisance"),
+            ("General Administration", "Administration", 72, "Administrative delays, civic inquiries, staff issues"),
+        ]
+        for cat_name, dept_name, sla_h, desc in categories:
+            cat, cat_created = Category.objects.get_or_create(
+                name=cat_name,
+                defaults={"department_name": dept_name, "sla_hours": sla_h, "description": desc},
+            )
+            if cat_created:
+                self.stdout.write(f"created  category {cat_name} (SLA: {sla_h}h)")

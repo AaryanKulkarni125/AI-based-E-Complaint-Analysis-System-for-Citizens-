@@ -4,94 +4,307 @@
 <div class="page-head">
   <div>
     <h1>Complaint {{ complaint.reference }}</h1>
-    <p class="muted">Submitted {{ complaint.submitted_at|date:"j M Y, H:i" }}</p>
+    <p class="muted">Submitted {{ complaint.submitted_at|date:"j M Y, H:i" }} · {{ complaint.ward }}</p>
   </div>
-  <span class="badge badge-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <span class="badge badge-priority-{{ complaint.priority }}">{{ complaint.get_priority_display }} Priority</span>
+    <span class="badge badge-status-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
+  </div>
 </div>
+
+<!-- Alerts: SLA breach, AI review, Duplicate -->
+{% if complaint.is_sla_breached %}
+  <div class="alert alert-error" style="margin-bottom: 16px;">
+    ⚠️ <b>SLA Breached:</b> Resolution deadline exceeded for {{ complaint.category.name|default:"this department" }} (SLA: {{ complaint.category.sla_hours|default:48 }} hours). Escalated to Administrator.
+  </div>
+{% elif complaint.is_open %}
+  <div class="alert alert-info" style="margin-bottom: 16px;">
+    ⏱️ <b>SLA Resolution Target:</b> {{ complaint.sla_remaining_hours }} hours remaining of {{ complaint.category.sla_hours|default:48 }}h target.
+  </div>
+{% endif %}
+
+{% if complaint.needs_review and user.is_system_admin %}
+  <div class="alert alert-warning" style="margin-bottom: 16px;">
+    🔍 <b>AI Review Flagged:</b> Low model confidence ({{ complaint.confidence_score|default:"0.00" }}). Please verify or override category and priority below.
+  </div>
+{% endif %}
+
+{% if complaint.is_duplicate %}
+  <div class="alert alert-warning" style="margin-bottom: 16px;">
+    ⚠️ <b>Potential Duplicate:</b> This grievance was flagged as a possible duplicate of
+    {% if complaint.duplicate_of %}
+      <a href="{% url 'complaints:detail' complaint.duplicate_of.pk %}"><b>{{ complaint.duplicate_of.reference }}</b></a>.
+    {% else %}
+      an earlier grievance in this ward.
+    {% endif %}
+  </div>
+{% endif %}
 
 <div class="grid-2">
   <article class="card">
-    <h2>Details</h2>
+    <h2>Grievance Information</h2>
     <dl class="details">
-      <dt>Location</dt><dd>{{ complaint.location }}</dd>
-      {% if user.is_officer %}
-        <dt>Citizen</dt><dd>{{ complaint.citizen.get_full_name|default:complaint.citizen.username }}</dd>
-      {% else %}
-        <dt>Assigned officer</dt><dd>{{ complaint.assigned_officer.get_full_name|default:complaint.assigned_officer.username|default:"Awaiting an available officer" }}</dd>
-      {% endif %}
-      <dt>Category</dt><dd>{{ complaint.category|default:"Pending categorization" }}</dd>
-      <dt>Priority</dt><dd><span class="badge badge-{{ complaint.priority }}">{{ complaint.get_priority_display }}</span></dd>
-      <dt>Description</dt><dd class="pre-wrap">{{ complaint.description }}</dd>
+      <dt>Location</dt>
+      <dd>
+        {{ complaint.location }}
+        {% if complaint.latitude and complaint.longitude %}
+          <div style="margin-top: 4px;">
+            <small class="muted">GPS: {{ complaint.latitude }}, {{ complaint.longitude }}</small>
+            <a href="https://www.openstreetmap.org/?mlat={{ complaint.latitude }}&mlon={{ complaint.longitude }}#map=16/{{ complaint.latitude }}/{{ complaint.longitude }}"
+               target="_blank" rel="noopener noreferrer" class="small-link" style="margin-left: 6px;">View on OpenStreetMap ↗</a>
+          </div>
+        {% endif %}
+      </dd>
+      <dt>Administrative Ward</dt>
+      <dd>{{ complaint.ward }}</dd>
+      <dt>Department Category</dt>
+      <dd>
+        {{ complaint.category.name|default:"General Administration" }}
+        {% if complaint.confidence_score %}
+          <small class="muted">(AI Confidence: {{ complaint.confidence_score }})</small>
+        {% endif %}
+      </dd>
+      <dt>Citizen Filer</dt>
+      <dd>{{ complaint.citizen.get_full_name|default:complaint.citizen.username }}</dd>
+      <dt>Assigned Officer</dt>
+      <dd>
+        {% if complaint.assigned_officer %}
+          Officer {{ complaint.assigned_officer.username }} ({{ complaint.assigned_officer.officer_profile.department }})
+        {% else %}
+          <span class="muted">Awaiting assignment by administrator</span>
+        {% endif %}
+      </dd>
+      <dt>Description</dt>
+      <dd class="pre-wrap">{{ complaint.description }}</dd>
     </dl>
 
     {% if attachments %}
-      <h2 style="margin-top:18px">Attachments</h2>
-      <ul>
+      <h2 style="margin-top:20px">Photographic Evidence & Attachments</h2>
+      <ul class="attachments-list">
         {% for a in attachments %}
-          <li><a href="{% url 'complaints:attachment' a.pk %}">{{ a.original_name }}</a>
-            <span class="muted">({{ a.size|filesizeformat }}){% if a.is_resolution_evidence %} · resolution evidence{% endif %}</span></li>
+          <li>
+            <a href="{% url 'complaints:attachment' a.pk %}" class="btn btn-sm">📎 {{ a.original_name }}</a>
+            <span class="muted">({{ a.size|filesizeformat }}){% if a.is_resolution_evidence %} · resolution evidence{% endif %}</span>
+          </li>
         {% endfor %}
       </ul>
     {% endif %}
 
     {% if complaint.resolved_at %}
-      <h2 style="margin-top:18px">Resolution</h2>
+      <h2 style="margin-top:20px">Resolution Details</h2>
       <dl class="details">
-        <dt>Resolved by</dt><dd>{{ complaint.resolved_by.get_full_name|default:complaint.resolved_by.username }}</dd>
-        <dt>Resolved on</dt><dd>{{ complaint.resolved_at|date:"j M Y, H:i" }}</dd>
-        <dt>Time taken</dt><dd>{{ complaint.submitted_at|timesince:complaint.resolved_at }}</dd>
-        <dt>Remarks</dt><dd class="pre-wrap">{{ complaint.resolution_remarks }}</dd>
+        <dt>Resolved By</dt><dd>{{ complaint.resolved_by.get_full_name|default:complaint.resolved_by.username }}</dd>
+        <dt>Resolved At</dt><dd>{{ complaint.resolved_at|date:"j M Y, H:i" }}</dd>
+        <dt>Turnaround Time</dt><dd>{{ complaint.submitted_at|timesince:complaint.resolved_at }}</dd>
+        <dt>Officer Remarks</dt><dd class="pre-wrap">{{ complaint.resolution_remarks }}</dd>
+      </dl>
+    {% endif %}
+
+    {% if complaint.closed_at %}
+      <h2 style="margin-top:20px">Administrative Closure</h2>
+      <dl class="details">
+        <dt>Closed By</dt><dd>{{ complaint.closed_by.get_full_name|default:complaint.closed_by.username }}</dd>
+        <dt>Closed At</dt><dd>{{ complaint.closed_at|date:"j M Y, H:i" }}</dd>
+        {% if complaint.closure_remarks %}
+          <dt>Closure Remarks</dt><dd class="pre-wrap">{{ complaint.closure_remarks }}</dd>
+        {% endif %}
       </dl>
     {% endif %}
   </article>
 
   <article class="card">
-    <h2>Status history</h2>
+    <h2>Workflow & Audit Timeline</h2>
     <ul class="timeline">
       {% for h in history %}
         <li>
-          <strong>{{ h.get_to_status_display }}</strong>
-          <span class="muted"> · {{ h.timestamp|date:"j M Y, H:i" }}</span>
-          {% if h.note %}<div class="muted pre-wrap">{{ h.note }}</div>{% endif %}
+          <div style="display: flex; justify-content: space-between;">
+            <strong>{{ h.get_to_status_display }}</strong>
+            <span class="muted">{{ h.timestamp|date:"j M Y, H:i" }}</span>
+          </div>
+          {% if h.changed_by %}
+            <div class="muted" style="font-size: 0.85rem;">Actor: {{ h.changed_by.username }}</div>
+          {% endif %}
+          {% if h.note %}<div class="note-box pre-wrap">{{ h.note }}</div>{% endif %}
         </li>
       {% endfor %}
     </ul>
+
+    {% if assignment_logs %}
+      <h3 style="margin-top: 24px;">Reassignment Audit History</h3>
+      <ul class="details-list">
+        {% for a in assignment_logs %}
+          <li class="item" style="flex-direction: column; align-items: flex-start;">
+            <div><b>{{ a.from_officer.username|default:"Unassigned" }} → {{ a.to_officer.username }}</b> by {{ a.assigned_by.username }} <span class="muted">({{ a.timestamp|date:"j M Y, H:i" }})</span></div>
+            <div class="muted">Reason: {{ a.reason }}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if ai_override_logs %}
+      <h3 style="margin-top: 24px;">AI Override History</h3>
+      <ul class="details-list">
+        {% for o in ai_override_logs %}
+          <li class="item" style="flex-direction: column; align-items: flex-start;">
+            <div>Override by <b>{{ o.actor.username }}</b> on {{ o.timestamp|date:"j M Y, H:i" }}</div>
+            <div>Category: {{ o.original_category.name|default:"Unassigned" }} → {{ o.corrected_category.name }}</div>
+            <div>Priority: {{ o.original_priority }} → {{ o.corrected_priority }}</div>
+            {% if o.reason %}<div class="muted">Reason: {{ o.reason }}</div>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
   </article>
 </div>
 
+<!-- Citizen Feedback Section (REQ-FDBK-1) -->
+{% if feedback %}
+  <article class="card" style="margin-top: 20px;">
+    <h2>Citizen Satisfaction Rating & Feedback</h2>
+    <div style="font-size: 1.25rem; color: #f59e0b; margin-bottom: 8px;">
+      {% for i in "12345"|make_list %}
+        {% if forloop.counter <= feedback.rating %}★{% else %}☆{% endif %}
+      {% endfor %}
+      <span style="font-size: 1rem; color: var(--text); margin-left: 8px;">({{ feedback.rating }} / 5 Stars)</span>
+    </div>
+    {% if feedback.comments %}
+      <p><b>Citizen Comments:</b> "{{ feedback.comments }}"</p>
+    {% endif %}
+    <small class="muted">Submitted on {{ feedback.created_at|date:"j M Y, H:i" }}</small>
+  </article>
+{% elif user.is_citizen and feedback_form %}
+  <article class="card form-card wide" style="margin-top: 20px; max-width: none;">
+    <h2>Confirm Resolution & Submit Feedback (REQ-FDBK-1)</h2>
+    <p class="muted">Please confirm if your grievance was resolved satisfactorily and rate the quality of service.</p>
+    <form method="post" novalidate data-once>
+      {% csrf_token %}
+      <input type="hidden" name="form_action" value="citizen_feedback">
+      <div class="field">
+        <label for="{{ feedback_form.rating.id_for_label }}">Satisfaction Rating</label>
+        {{ feedback_form.rating }}
+      </div>
+      <div class="field">
+        <label for="{{ feedback_form.comments.id_for_label }}">Comments / Feedback</label>
+        {{ feedback_form.comments }}
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Submit Feedback Rating</button>
+      </div>
+    </form>
+  </article>
+{% endif %}
+
+<!-- Citizen / Admin Reopen Section (REQ-FDBK-2) -->
+{% if reopen_form %}
+  <article class="card form-card wide" style="margin-top: 20px; max-width: none; border-color: var(--warning);">
+    <h2>Reopen Grievance (REQ-FDBK-2)</h2>
+    <p class="muted">If the issue is unresolved or has recurred, you can reopen it within 7 days of resolution. It will be returned to the investigating officer.</p>
+    <form method="post" novalidate data-once>
+      {% csrf_token %}
+      <input type="hidden" name="form_action" value="reopen">
+      <div class="field {% if reopen_form.reason.errors %}has-error{% endif %}">
+        <label for="{{ reopen_form.reason.id_for_label }}">Reason for Reopening <span class="req">*</span></label>
+        {{ reopen_form.reason }}
+        {{ reopen_form.reason.errors }}
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-warning">Reopen Grievance</button>
+      </div>
+    </form>
+  </article>
+{% endif %}
+
+<!-- Officer Update Action Card -->
 {% if update_form %}
-<article class="card form-card wide" style="margin-top:16px;max-width:none">
-  <h2>Update status</h2>
-  <p class="muted">Current status: <strong>{{ complaint.get_status_display }}</strong>.
-    Move it one step forward{% if complaint.status == "in_progress" %}, or resolve it with remarks{% endif %}.</p>
+<article class="card form-card wide" style="margin-top: 20px; max-width: none;">
+  <h2>Officer Workflow Action</h2>
+  <p class="muted">Current status: <b>{{ complaint.get_status_display }}</b>. Advance to next legal status.</p>
   <form method="post" enctype="multipart/form-data" novalidate data-once>
     {% csrf_token %}
+    <input type="hidden" name="form_action" value="officer_update">
     {% if update_form.non_field_errors %}
-      <div class="alert alert-error" role="alert">{{ update_form.non_field_errors }}</div>
+      <div class="alert alert-error">{{ update_form.non_field_errors }}</div>
     {% endif %}
     {% for field in update_form %}
       <div class="field {% if field.errors %}has-error{% endif %}"
            {% if field.name == "remarks" or field.name == "evidence" %}data-field="{{ field.name }}"{% endif %}>
-        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req">*</span>{% endif %}</label>
         {{ field }}
         {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
         {{ field.errors }}
       </div>
     {% endfor %}
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">Save update</button>
+      <button type="submit" class="btn btn-primary">Update Complaint Status</button>
     </div>
   </form>
 </article>
-{% elif user.is_officer and not complaint.next_officer_statuses %}
-<p class="muted" style="margin-top:16px">
-  {% if complaint.status == "resolved" %}This complaint is resolved and awaiting closure. No further officer action is needed.
-  {% else %}No further officer action is possible on this complaint.{% endif %}
-</p>
 {% endif %}
 
-<p class="form-foot">
-  {% if user.is_citizen %}<a href="{% url 'complaints:my_list' %}">← Back to my complaints</a>
-  {% else %}<a href="{% url 'complaints:officer_list' %}">← Back to assigned complaints</a>{% endif %}
+<!-- Admin Management Action Cards -->
+{% if user.is_system_admin %}
+<div class="grid-2" style="margin-top: 20px;">
+  <!-- Admin Reassignment -->
+  <article class="card">
+    <h2>Manual Officer Reassignment (REQ-ASGN-2)</h2>
+    <form method="post" novalidate data-once>
+      {% csrf_token %}
+      <input type="hidden" name="form_action" value="admin_reassign">
+      <div class="field">
+        <label for="{{ reassign_form.officer.id_for_label }}">Target Officer</label>
+        {{ reassign_form.officer }}
+      </div>
+      <div class="field">
+        <label for="{{ reassign_form.reason.id_for_label }}">Reason for Reassignment <span class="req">*</span></label>
+        {{ reassign_form.reason }}
+      </div>
+      <button type="submit" class="btn btn-primary">Reassign Grievance</button>
+    </form>
+  </article>
+
+  <!-- Admin AI Override -->
+  <article class="card">
+    <h2>AI Prediction Override (REQ-AI-004/005)</h2>
+    <form method="post" novalidate data-once>
+      {% csrf_token %}
+      <input type="hidden" name="form_action" value="admin_override_ai">
+      <div class="field">
+        <label for="{{ override_form.category.id_for_label }}">Corrected Category</label>
+        {{ override_form.category }}
+      </div>
+      <div class="field">
+        <label for="{{ override_form.priority.id_for_label }}">Corrected Priority</label>
+        {{ override_form.priority }}
+      </div>
+      <div class="field">
+        <label for="{{ override_form.reason.id_for_label }}">Reason for Override</label>
+        {{ override_form.reason }}
+      </div>
+      <button type="submit" class="btn btn-primary">Override AI Prediction</button>
+    </form>
+  </article>
+</div>
+
+{% if complaint.status == "resolved" and close_form %}
+  <article class="card" style="margin-top: 20px; border-color: var(--success);">
+    <h2>Administrative Closure (REQ-RES-004)</h2>
+    <p class="muted">Confirm final resolution and formally close this grievance.</p>
+    <form method="post" novalidate data-once>
+      {% csrf_token %}
+      <input type="hidden" name="form_action" value="admin_close">
+      <div class="field">
+        <label for="{{ close_form.remarks.id_for_label }}">Closure Remarks</label>
+        {{ close_form.remarks }}
+      </div>
+      <button type="submit" class="btn btn-primary">Close Complaint Formally</button>
+    </form>
+  </article>
+{% endif %}
+{% endif %}
+
+<p class="form-foot" style="margin-top: 24px;">
+  {% if user.is_citizen %}<a href="{% url 'complaints:my_list' %}">← Back to my grievances</a>
+  {% elif user.is_officer %}<a href="{% url 'complaints:officer_list' %}">← Back to assigned queue</a>
+  {% else %}<a href="{% url 'complaints:admin_complaint_list' %}">← Back to complaints console</a>{% endif %}
 </p>
 {% endblock %}

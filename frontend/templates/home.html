@@ -1,35 +1,55 @@
 {% extends "base.html" %}
-{% block title %}Home{% endblock %}
+{% block title %}Citizen Grievance Redressal Portal{% endblock %}
 {% block content %}
 <section class="hero">
-  <h1>Raise a complaint. Track it to resolution.</h1>
-  <p>A single portal where citizens lodge grievances and officers resolve them quickly and transparently.</p>
+  <div class="hero-badge">🏛️ Municipal Corporation Civic Grievance System</div>
+  <h1>Report Civic Issues. Track Progress. Ensure Resolution.</h1>
+  <p>An intelligent platform powered by AI categorization to swiftly route potholes, water leaks, garbage, and street lighting issues directly to concerned municipal departments.</p>
+
   <div class="hero-actions">
     {% if user.is_authenticated %}
-      <a class="btn btn-primary" href="{% url 'accounts:dashboard' %}">Go to your dashboard</a>
+      <a class="btn btn-primary" href="{% url 'accounts:dashboard' %}">Go to Dashboard</a>
+      {% if user.is_citizen %}
+        <a class="btn" href="{% url 'complaints:submit' %}">Submit New Complaint</a>
+      {% endif %}
     {% else %}
-      <a class="btn btn-primary" href="{% url 'accounts:login' %}">Log in</a>
-      <a class="btn" href="{% url 'accounts:register_choice' %}">Create an account</a>
+      <a class="btn btn-primary" href="{% url 'accounts:login' %}">Citizen / Officer Login</a>
+      <a class="btn btn-secondary" href="{% url 'accounts:otp_request' %}">OTP Login</a>
+      <a class="btn" href="{% url 'accounts:register_choice' %}">Create Account</a>
     {% endif %}
   </div>
+
+  <!-- Quick Complaint Tracking box -->
+  <div class="card tracking-card">
+    <h3>🔍 Quick Complaint Tracking</h3>
+    <p class="muted">Check the latest status of your grievance by tracking ID:</p>
+    <form method="get" action="{% url 'complaints:my_list' %}" class="tracking-form">
+      <input type="text" name="q" placeholder="Enter Tracking ID (e.g. CMP-000001)" required class="form-control" style="max-width: 320px;">
+      <button type="submit" class="btn btn-primary">Track Grievance</button>
+    </form>
+  </div>
+
   <p class="system-status" id="system-status" data-health-url="{% url 'health' %}">
     <span class="dot dot-unknown" aria-hidden="true"></span>
     <span id="system-status-text">Checking system status…</span>
   </p>
 </section>
 
-<section class="grid-3">
+<section class="grid-3 features-grid">
   <article class="card">
-    <h2>Citizens</h2>
-    <p>Submit a complaint with a description, location and supporting files, then follow its status.</p>
+    <div class="card-icon">🤖</div>
+    <h2>AI-Driven Redressal</h2>
+    <p>Natural language processing classifies issues into civic departments and flags critical hazards with automated priority routing.</p>
   </article>
   <article class="card">
-    <h2>Officers</h2>
-    <p>See the complaints assigned to you and move them from acknowledged to resolved.</p>
+    <div class="card-icon">📍</div>
+    <h2>Geo-Tagged Evidence</h2>
+    <p>Capture real-time GPS coordinates and timestamped photographs to eliminate disputes and verify civic defects on interactive maps.</p>
   </article>
   <article class="card">
-    <h2>System administrators</h2>
-    <p>Oversee accounts and keep the platform running.</p>
+    <div class="card-icon">⏱️</div>
+    <h2>Enforced SLA Timelines</h2>
+    <p>Mandatory turnaround timers per department. Automatic escalation on delays, proof-of-work remarks, and citizen feedback loop.</p>
   </article>
 </section>
 {% endblock %}

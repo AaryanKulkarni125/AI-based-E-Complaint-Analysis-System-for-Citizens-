@@ -366,3 +366,277 @@ class OfficerUpdateTests(ComplaintTestBase):
         self.update("resolved", "Resolved with remarks.")
         response = self.client.get(reverse("accounts:dashboard"))
         self.assertEqual((response.context["workload"], response.context["resolved_count"]), (0, 1))
+
+
+class AICategorizationTests(TestCase):
+    def test_ai_categorizes_pothole_as_roads(self):
+        from complaints.ai import classify_text
+        cat, prio, conf, needs_rev = classify_text("Severe deep pothole on arterial road damaging cars and causing accidents")
+        self.assertEqual(cat, "Roads & Infrastructure")
+        self.assertEqual(prio, "high")
+        self.assertGreater(conf, 0.0)
+
+    def test_ai_categorizes_sparking_as_electricity(self):
+        from complaints.ai import classify_text
+        cat, prio, conf, _ = classify_text("Transformer sparking with fire and black smoke near school")
+        self.assertEqual(cat, "Electricity & Street Lighting")
+        self.assertEqual(prio, "high")
+
+    def test_ai_categorizes_garbage_as_sanitation(self):
+        from complaints.ai import classify_text
+        cat, prio, conf, _ = classify_text("Huge garbage dump overflowing on street corner with foul smell")
+        self.assertEqual(cat, "Sanitation & Waste Management")
+        self.assertEqual(prio, "medium")
+
+    def test_ai_fallback_on_unclassifiable_text(self):
+        from complaints.ai import classify_text
+        cat, prio, conf, needs_rev = classify_text("xyz random gibberish 123456789")
+        # should not crash; flags review if confidence is low
+        self.assertTrue(needs_rev)
+
+
+class DuplicateDetectionTests(ComplaintTestBase):
+    def test_duplicate_flagged_for_similar_complaint_in_same_ward(self):
+        self.login(self.citizen)
+        c1 = self.submit("Broken water pipeline leaking clean drinking water on main road", location="North Street")
+        self.login(self.other)
+        # Second citizen reports same issue in same ward
+        self.submit("Broken water pipeline leaking clean drinking water on main road", location="North Street")
+        from complaints.models import Complaint
+        c2 = Complaint.objects.order_by("-id").first()
+        self.assertTrue(c2.is_duplicate)
+        self.assertEqual(c2.duplicate_of.pk, 1)
+
+
+class AdminWorkflowTests(ComplaintTestBase):
+    def setUp(self):
+        super().setUp()
+        self.admin = make_user("adminuser", User.Role.ADMIN)
+        self.second_officer = make_user("sam", User.Role.OFFICER)
+        self.login(self.citizen)
+        self.submit()
+        self.complaint = Complaint.objects.get()
+
+    def test_admin_manual_reassignment_with_audit_log(self):
+        from complaints import services
+        from complaints.models import AssignmentLog
+
+        services.admin_reassign_complaint(
+            self.complaint, self.second_officer, self.admin, "Officer Olga is on leave."
+        )
+        self.complaint.refresh_from_db()
+        self.assertEqual(self.complaint.assigned_officer, self.second_officer)
+        log = AssignmentLog.objects.filter(complaint=self.complaint).first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.from_officer, self.officer)
+        self.assertEqual(log.to_officer, self.second_officer)
+        self.assertEqual(log.assigned_by, self.admin)
+        self.assertEqual(log.reason, "Officer Olga is on leave.")
+
+    def test_reassignment_without_reason_rejected(self):
+        from complaints import services
+        with self.assertRaises(services.WorkflowError):
+            services.admin_reassign_complaint(self.complaint, self.second_officer, self.admin, "")
+
+    def test_admin_ai_override_with_audit_log(self):
+        from complaints import services
+        from complaints.models import AIOverrideLog, Category
+
+        new_cat = Category.objects.create(name="Sanitation Extra", department_name="Sanitation")
+        services.admin_override_ai(self.complaint, new_cat, "high", self.admin, "Correction by triage.")
+        self.complaint.refresh_from_db()
+        self.assertEqual(self.complaint.category, new_cat)
+        self.assertEqual(self.complaint.priority, "high")
+        self.assertFalse(self.complaint.needs_review)
+
+        log = AIOverrideLog.objects.filter(complaint=self.complaint).first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.corrected_category, new_cat)
+        self.assertEqual(log.corrected_priority, "high")
+        self.assertEqual(log.actor, self.admin)
+
+    def test_admin_close_resolved_complaint(self):
+        from complaints import services
+
+        # Move to resolved
+        services.change_status(self.complaint, self.officer, "acknowledged")
+        services.change_status(self.complaint, self.officer, "in_progress")
+        services.change_status(self.complaint, self.officer, "resolved", remarks="All repaired properly.")
+
+        services.admin_close_complaint(self.complaint, self.admin, "Verified by ward inspector.")
+        self.complaint.refresh_from_db()
+        self.assertEqual(self.complaint.status, Complaint.Status.CLOSED)
+        self.assertEqual(self.complaint.closed_by, self.admin)
+
+    def test_cannot_close_unresolved_complaint(self):
+        from complaints import services
+        with self.assertRaises(services.WorkflowError):
+            services.admin_close_complaint(self.complaint, self.admin, "Cannot close yet.")
+
+
+class CitizenFeedbackAndReopenTests(ComplaintTestBase):
+    def setUp(self):
+        super().setUp()
+        self.login(self.citizen)
+        self.submit()
+        self.complaint = Complaint.objects.get()
+        from complaints import services
+        services.change_status(self.complaint, self.officer, "acknowledged")
+        services.change_status(self.complaint, self.officer, "in_progress")
+        services.change_status(self.complaint, self.officer, "resolved", remarks="Issue fixed permanently.")
+        self.complaint.refresh_from_db()
+
+    def test_citizen_submits_feedback_rating(self):
+        from complaints import services
+        from complaints.models import Feedback
+
+        fb = services.submit_citizen_feedback(self.complaint, self.citizen, 5, "Prompt and excellent work!")
+        self.assertEqual(fb.rating, 5)
+        self.assertEqual(fb.comments, "Prompt and excellent work!")
+        self.assertTrue(Feedback.objects.filter(complaint=self.complaint).exists())
+
+    def test_other_citizen_cannot_submit_feedback(self):
+        from complaints import services
+        with self.assertRaises(services.WorkflowError):
+            services.submit_citizen_feedback(self.complaint, self.other, 4, "Not my complaint.")
+
+    def test_citizen_reopens_complaint(self):
+        from complaints import services
+
+        services.reopen_complaint(self.complaint, self.citizen, "Water is still leaking this morning.")
+        self.complaint.refresh_from_db()
+        self.assertEqual(self.complaint.status, Complaint.Status.REOPENED)
+        self.assertTrue(
+            self.complaint.history.filter(to_status=Complaint.Status.REOPENED).exists()
+        )
+
+
+class NotificationLogAndRetryTests(TestCase):
+    def test_notification_logging_and_retry(self):
+        from complaints.notifications import _send, retry_failed_notifications
+        from complaints.models import NotificationLog
+
+        log = _send("user@example.com", "Test Subject", "Test Body")
+        self.assertIsNotNone(log)
+        self.assertEqual(log.status, "sent")
+        self.assertEqual(log.recipient, "user@example.com")
+
+        # Test retry mechanism
+        failed_entry = NotificationLog.objects.create(
+            recipient="retry@example.com",
+            subject="Retry Test",
+            message="Retry Body",
+            status="failed",
+            retry_count=0,
+        )
+        count = retry_failed_notifications()
+        self.assertGreaterEqual(count, 1)
+        failed_entry.refresh_from_db()
+        self.assertEqual(failed_entry.status, "sent")
+
+
+class AdminViewsAndExportTests(ComplaintTestBase):
+    def setUp(self):
+        super().setUp()
+        self.admin = make_user("superadmin", User.Role.ADMIN)
+        self.login(self.citizen)
+        self.submit()
+
+    def test_admin_complaint_list_view(self):
+        self.login(self.admin)
+        response = self.client.get(reverse("complaints:admin_complaint_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "CMP-000001")
+
+    def test_admin_map_view(self):
+        self.login(self.admin)
+        response = self.client.get(reverse("complaints:admin_map_view"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "map")
+
+    def test_admin_analytics_view(self):
+        self.login(self.admin)
+        response = self.client.get(reverse("complaints:admin_analytics"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Analytics & Reporting")
+
+    def test_export_csv(self):
+        self.login(self.admin)
+        response = self.client.get(reverse("complaints:export_csv"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv")
+        self.assertIn(b"Reference,Citizen", response.content)
+
+    def test_export_pdf(self):
+        self.login(self.admin)
+        response = self.client.get(reverse("complaints:export_pdf"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertTrue(response.content.startswith(b"%PDF"))
+
+    def test_officer_roster_and_status_toggle(self):
+        self.login(self.admin)
+        response = self.client.get(reverse("complaints:admin_officer_roster"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.officer.username)
+
+        # Toggle officer status
+        toggle_url = reverse("complaints:admin_toggle_officer_status", args=[self.officer.pk])
+        self.client.post(toggle_url)
+        self.officer.officer_profile.refresh_from_db()
+        self.assertEqual(self.officer.officer_profile.availability_status, "inactive")
+
+
+class RestApiTests(ComplaintTestBase):
+    def setUp(self):
+        super().setUp()
+        self.admin = make_user("adminapi", User.Role.ADMIN)
+        self.login(self.citizen)
+        self.submit()
+        self.complaint = Complaint.objects.get()
+
+    def test_get_complaints_collection_api(self):
+        self.login(self.citizen)
+        response = self.client.get("/api/complaints/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "success")
+        self.assertEqual(len(data["data"]["items"]), 1)
+        self.assertEqual(data["data"]["items"][0]["reference"], self.complaint.reference)
+
+    def test_get_complaint_detail_api(self):
+        self.login(self.citizen)
+        response = self.client.get(f"/api/complaints/{self.complaint.pk}/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["data"]["reference"], self.complaint.reference)
+
+    def test_analytics_api_forbidden_for_citizen(self):
+        self.login(self.citizen)
+        response = self.client.get("/api/analytics/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_analytics_api_success_for_admin(self):
+        self.login(self.admin)
+        response = self.client.get("/api/analytics/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("summary", data["data"])
+        self.assertEqual(data["data"]["summary"]["total"], 1)
+
+    def test_map_data_api(self):
+        self.complaint.latitude = 19.0760
+        self.complaint.longitude = 72.8777
+        self.complaint.save()
+
+        response = self.client.get("/api/map-data/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data["data"]), 1)
+        self.assertEqual(data["data"][0]["reference"], self.complaint.reference)
+
+    def test_categories_api(self):
+        response = self.client.get("/api/categories/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIsInstance(data["data"], list)

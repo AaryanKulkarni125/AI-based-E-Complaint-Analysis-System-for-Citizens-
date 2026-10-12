@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Complaint Submitted — {{ complaint.reference }}{% endblock %}
+{% block content %}
+<div class="card form-card wide confirmation-box">
+  <div style="text-align: center; margin-bottom: 24px;">
+    <div style="font-size: 3rem; margin-bottom: 8px;">✅</div>
+    <h1>Complaint Submitted Successfully</h1>
+    <p class="muted">Your civic grievance has been officially registered with the Municipal Corporation.</p>
+  </div>
+
+  <div class="tracking-id-banner">
+    <div class="lbl">YOUR UNIQUE COMPLAINT TRACKING ID</div>
+    <div class="id-val" id="ref-id">{{ complaint.reference }}</div>
+    <button type="button" class="btn btn-sm btn-ghost" id="copy-ref-btn">📋 Copy Tracking ID</button>
+  </div>
+
+  <div class="details-list" style="margin: 24px 0;">
+    <div class="item">
+      <span class="label">Assigned Status:</span>
+      <span class="val"><span class="badge badge-status-{{ complaint.status }}">{{ complaint.get_status_display }}</span></span>
+    </div>
+    <div class="item">
+      <span class="label">Department / Category:</span>
+      <span class="val">{{ complaint.category.name|default:"General Administration" }}</span>
+    </div>
+    <div class="item">
+      <span class="label">Urgency Priority:</span>
+      <span class="val"><span class="badge badge-priority-{{ complaint.priority }}">{{ complaint.get_priority_display }}</span></span>
+    </div>
+    <div class="item">
+      <span class="label">Administrative Ward:</span>
+      <span class="val">{{ complaint.ward }}</span>
+    </div>
+    <div class="item">
+      <span class="label">Location:</span>
+      <span class="val">{{ complaint.location }}</span>
+    </div>
+    {% if complaint.latitude and complaint.longitude %}
+      <div class="item">
+        <span class="label">GPS Coordinates:</span>
+        <span class="val">{{ complaint.latitude }}, {{ complaint.longitude }}</span>
+      </div>
+    {% endif %}
+    {% if complaint.assigned_officer %}
+      <div class="item">
+        <span class="label">Assigned Officer:</span>
+        <span class="val">Officer {{ complaint.assigned_officer.username }} ({{ complaint.assigned_officer.officer_profile.department }})</span>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="hero-actions" style="justify-content: center; margin-top: 24px;">
+    <a href="{% url 'complaints:detail' complaint.pk %}" class="btn btn-primary">Track Grievance Details</a>
+    <a href="{% url 'complaints:submit' %}" class="btn">File Another Complaint</a>
+    <a href="{% url 'accounts:dashboard' %}" class="btn btn-ghost">Return to Dashboard</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  var copyBtn = document.getElementById("copy-ref-btn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", function () {
+      var idText = document.getElementById("ref-id").textContent.trim();
+      navigator.clipboard.writeText(idText).then(function () {
+        copyBtn.textContent = "✓ Copied!";
+        setTimeout(function () { copyBtn.textContent = "📋 Copy Tracking ID"; }, 2000);
+      });
+    });
+  }
+</script>
+{% endblock %}
