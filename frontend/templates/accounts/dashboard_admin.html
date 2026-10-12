@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}System administrator dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Welcome, {{ user.first_name|default:user.username }}</h1>
+    <p class="muted">System administrator dashboard</p>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="num">{{ user_counts.citizens }}</div><div class="lbl">Citizens</div></div>
+  <div class="stat"><div class="num">{{ user_counts.officers }}</div><div class="lbl">Officers</div></div>
+  <div class="stat"><div class="num">{{ user_counts.admins }}</div><div class="lbl">System administrators</div></div>
+</div>
+
+<h2>Recent login activity</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Time</th><th>Username</th><th>Result</th><th>IP address</th></tr></thead>
+    <tbody>
+      {% for a in recent_logins %}
+        <tr>
+          <td>{{ a.timestamp|date:"j M Y, H:i:s" }}</td>
+          <td>{{ a.username }}</td>
+          <td>{{ a.get_outcome_display }}</td>
+          <td>{{ a.ip_address|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="empty">No login activity yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

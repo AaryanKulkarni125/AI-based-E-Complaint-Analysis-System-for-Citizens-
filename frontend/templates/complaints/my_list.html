@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}My complaints{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>My complaints</h1>
+    <p class="muted">Track the status of every complaint you've submitted.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'complaints:submit' %}">Submit a complaint</a>
+</div>
+
+<form method="get" class="filters" role="search">
+  <label class="sr-only" for="q" style="position:absolute;left:-999px">Search by tracking ID</label>
+  <input type="text" id="q" name="q" value="{{ query }}" placeholder="Tracking ID, e.g. CMP-000012"
+         style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit">
+  {% if active_status %}<input type="hidden" name="status" value="{{ active_status }}">{% endif %}
+  <button type="submit" class="btn btn-sm">Search</button>
+</form>
+
+<nav class="filters" aria-label="Filter by status">
+  <a class="chip {% if not active_status %}active{% endif %}" href="?{% if query %}q={{ query|urlencode }}{% endif %}">All</a>
+  {% for value, label in statuses %}
+    <a class="chip {% if active_status == value %}active{% endif %}" href="?status={{ value }}{% if query %}&q={{ query|urlencode }}{% endif %}">{{ label }}</a>
+  {% endfor %}
+</nav>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Tracking ID</th><th>Location</th><th>Submitted</th><th>Status</th><th>Officer</th></tr>
+    </thead>
+    <tbody>
+      {% for c in complaints %}
+        <tr>
+          <td><a href="{% url 'complaints:detail' c.pk %}">{{ c.reference }}</a></td>
+          <td>{{ c.location }}</td>
+          <td>{{ c.submitted_at|date:"j M Y, H:i" }}</td>
+          <td><span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span></td>
+          <td>{{ c.assigned_officer.get_full_name|default:c.assigned_officer.username|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="empty">
+          {% if query or active_status %}No matching complaint found.{% else %}You haven't submitted any complaints yet.{% endif %}
+        </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

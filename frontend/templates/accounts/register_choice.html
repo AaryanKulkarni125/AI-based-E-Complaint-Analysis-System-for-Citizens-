@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Create an account</h1>
+    <p class="muted">Choose the type of account you want to create.</p>
+  </div>
+</div>
+
+<div class="grid-3">
+  <article class="card">
+    <h2>Citizen</h2>
+    <p>Submit complaints and track them until they are resolved.</p>
+    <a class="btn btn-primary" href="{% url 'accounts:register' 'citizen' %}">Register as citizen</a>
+  </article>
+  <article class="card">
+    <h2>Officer</h2>
+    <p>Receive assigned complaints and update their status. Requires an officer registration code.</p>
+    <a class="btn" href="{% url 'accounts:register' 'officer' %}">Register as officer</a>
+  </article>
+  <article class="card">
+    <h2>System administrator</h2>
+    <p>Oversee accounts and the platform. Requires an administrator registration code.</p>
+    <a class="btn" href="{% url 'accounts:register' 'admin' %}">Register as administrator</a>
+  </article>
+</div>
+
+<p class="form-foot">Already have an account? <a href="{% url 'accounts:login' %}">Log in</a></p>
+{% endblock %}

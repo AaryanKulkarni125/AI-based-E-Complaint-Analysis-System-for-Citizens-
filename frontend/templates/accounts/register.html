@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Register as {{ role_label }}{% endblock %}
+{% block content %}
+<div class="card form-card wide">
+  <h1>Create {{ role_label }} account</h1>
+  <p class="muted">Fields marked <span class="req" aria-hidden="true" style="color:var(--danger)">*</span> are required.</p>
+
+  <form method="post" novalidate data-once>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-error" role="alert">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    {% for field in form %}
+      <div class="field {% if field.errors %}has-error{% endif %}">
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Create account</button>
+      <a class="btn btn-ghost" href="{% url 'accounts:register_choice' %}">Back</a>
+    </div>
+  </form>
+
+  <p class="form-foot">Already have an account? <a href="{% url 'accounts:login' %}">Log in</a></p>
+</div>
+{% endblock %}

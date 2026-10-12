@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Officer dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Welcome, {{ user.first_name|default:user.username }}</h1>
+    <p class="muted">Officer dashboard</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'complaints:officer_list' %}">Assigned complaints</a>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="num">{{ workload }}</div><div class="lbl">Open complaints</div></div>
+  <div class="stat"><div class="num">{{ resolved_count }}</div><div class="lbl">Resolved / closed</div></div>
+</div>
+
+<div class="page-head" style="margin-bottom:8px">
+  <h2 style="margin:0">Recently updated</h2>
+  <a href="{% url 'complaints:officer_list' %}">View all</a>
+</div>
+{% include "complaints/_recent_table.html" with empty_text="No complaints have been assigned to you yet." %}
+
+<article class="card" style="margin-top:20px">
+  <h2>Your account</h2>
+  <dl class="details">
+    <dt>Username</dt><dd>{{ user.username }}</dd>
+    <dt>Name</dt><dd>{{ user.get_full_name|default:"—" }}</dd>
+    <dt>Email</dt><dd>{{ user.email }}</dd>
+    <dt>Department</dt><dd>{{ user.officer_profile.department }}</dd>
+    <dt>Availability</dt><dd>{{ user.officer_profile.get_availability_status_display }}</dd>
+  </dl>
+</article>
+{% endblock %}

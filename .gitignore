@@ -1,0 +1,26 @@
+# Virtual environment
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Local data: user accounts/complaints and uploaded files must never be committed
+db.sqlite3
+db.sqlite3-journal
+media/
+
+# Django
+staticfiles/
+
+# Secrets / local config
+.env
+*.env
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

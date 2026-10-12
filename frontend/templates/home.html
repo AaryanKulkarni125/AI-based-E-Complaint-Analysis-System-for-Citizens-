@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Raise a complaint. Track it to resolution.</h1>
+  <p>A single portal where citizens lodge grievances and officers resolve them quickly and transparently.</p>
+  <div class="hero-actions">
+    {% if user.is_authenticated %}
+      <a class="btn btn-primary" href="{% url 'accounts:dashboard' %}">Go to your dashboard</a>
+    {% else %}
+      <a class="btn btn-primary" href="{% url 'accounts:login' %}">Log in</a>
+      <a class="btn" href="{% url 'accounts:register_choice' %}">Create an account</a>
+    {% endif %}
+  </div>
+  <p class="system-status" id="system-status" data-health-url="{% url 'health' %}">
+    <span class="dot dot-unknown" aria-hidden="true"></span>
+    <span id="system-status-text">Checking system status…</span>
+  </p>
+</section>
+
+<section class="grid-3">
+  <article class="card">
+    <h2>Citizens</h2>
+    <p>Submit a complaint with a description, location and supporting files, then follow its status.</p>
+  </article>
+  <article class="card">
+    <h2>Officers</h2>
+    <p>See the complaints assigned to you and move them from acknowledged to resolved.</p>
+  </article>
+  <article class="card">
+    <h2>System administrators</h2>
+    <p>Oversee accounts and keep the platform running.</p>
+  </article>
+</section>
+{% endblock %}

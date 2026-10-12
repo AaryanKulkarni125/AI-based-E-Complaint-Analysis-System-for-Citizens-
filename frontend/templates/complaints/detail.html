@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Complaint {{ complaint.reference }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Complaint {{ complaint.reference }}</h1>
+    <p class="muted">Submitted {{ complaint.submitted_at|date:"j M Y, H:i" }}</p>
+  </div>
+  <span class="badge badge-{{ complaint.status }}">{{ complaint.get_status_display }}</span>
+</div>
+
+<div class="grid-2">
+  <article class="card">
+    <h2>Details</h2>
+    <dl class="details">
+      <dt>Location</dt><dd>{{ complaint.location }}</dd>
+      {% if user.is_officer %}
+        <dt>Citizen</dt><dd>{{ complaint.citizen.get_full_name|default:complaint.citizen.username }}</dd>
+      {% else %}
+        <dt>Assigned officer</dt><dd>{{ complaint.assigned_officer.get_full_name|default:complaint.assigned_officer.username|default:"Awaiting an available officer" }}</dd>
+      {% endif %}
+      <dt>Category</dt><dd>{{ complaint.category|default:"Pending categorization" }}</dd>
+      <dt>Priority</dt><dd><span class="badge badge-{{ complaint.priority }}">{{ complaint.get_priority_display }}</span></dd>
+      <dt>Description</dt><dd class="pre-wrap">{{ complaint.description }}</dd>
+    </dl>
+
+    {% if attachments %}
+      <h2 style="margin-top:18px">Attachments</h2>
+      <ul>
+        {% for a in attachments %}
+          <li><a href="{% url 'complaints:attachment' a.pk %}">{{ a.original_name }}</a>
+            <span class="muted">({{ a.size|filesizeformat }}){% if a.is_resolution_evidence %} · resolution evidence{% endif %}</span></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if complaint.resolved_at %}
+      <h2 style="margin-top:18px">Resolution</h2>
+      <dl class="details">
+        <dt>Resolved by</dt><dd>{{ complaint.resolved_by.get_full_name|default:complaint.resolved_by.username }}</dd>
+        <dt>Resolved on</dt><dd>{{ complaint.resolved_at|date:"j M Y, H:i" }}</dd>
+        <dt>Time taken</dt><dd>{{ complaint.submitted_at|timesince:complaint.resolved_at }}</dd>
+        <dt>Remarks</dt><dd class="pre-wrap">{{ complaint.resolution_remarks }}</dd>
+      </dl>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <h2>Status history</h2>
+    <ul class="timeline">
+      {% for h in history %}
+        <li>
+          <strong>{{ h.get_to_status_display }}</strong>
+          <span class="muted"> · {{ h.timestamp|date:"j M Y, H:i" }}</span>
+          {% if h.note %}<div class="muted pre-wrap">{{ h.note }}</div>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </article>
+</div>
+
+{% if update_form %}
+<article class="card form-card wide" style="margin-top:16px;max-width:none">
+  <h2>Update status</h2>
+  <p class="muted">Current status: <strong>{{ complaint.get_status_display }}</strong>.
+    Move it one step forward{% if complaint.status == "in_progress" %}, or resolve it with remarks{% endif %}.</p>
+  <form method="post" enctype="multipart/form-data" novalidate data-once>
+    {% csrf_token %}
+    {% if update_form.non_field_errors %}
+      <div class="alert alert-error" role="alert">{{ update_form.non_field_errors }}</div>
+    {% endif %}
+    {% for field in update_form %}
+      <div class="field {% if field.errors %}has-error{% endif %}"
+           {% if field.name == "remarks" or field.name == "evidence" %}data-field="{{ field.name }}"{% endif %}>
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save update</button>
+    </div>
+  </form>
+</article>
+{% elif user.is_officer and not complaint.next_officer_statuses %}
+<p class="muted" style="margin-top:16px">
+  {% if complaint.status == "resolved" %}This complaint is resolved and awaiting closure. No further officer action is needed.
+  {% else %}No further officer action is possible on this complaint.{% endif %}
+</p>
+{% endif %}
+
+<p class="form-foot">
+  {% if user.is_citizen %}<a href="{% url 'complaints:my_list' %}">← Back to my complaints</a>
+  {% else %}<a href="{% url 'complaints:officer_list' %}">← Back to assigned complaints</a>{% endif %}
+</p>
+{% endblock %}

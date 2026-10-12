@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Citizen dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Welcome, {{ user.first_name|default:user.username }}</h1>
+    <p class="muted">Citizen dashboard</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'complaints:submit' %}">Submit a complaint</a>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="num">{{ open_count }}</div><div class="lbl">Open complaints</div></div>
+  <div class="stat"><div class="num">{{ resolved_count }}</div><div class="lbl">Resolved / closed</div></div>
+</div>
+
+<div class="page-head" style="margin-bottom:8px">
+  <h2 style="margin:0">Recent complaints</h2>
+  <a href="{% url 'complaints:my_list' %}">View all</a>
+</div>
+{% include "complaints/_recent_table.html" with empty_text="You haven't submitted any complaints yet." %}
+
+<article class="card" style="margin-top:20px">
+  <h2>Your account</h2>
+  <dl class="details">
+    <dt>Username</dt><dd>{{ user.username }}</dd>
+    <dt>Name</dt><dd>{{ user.get_full_name|default:"—" }}</dd>
+    <dt>Email</dt><dd>{{ user.email }}</dd>
+    <dt>Status</dt><dd>{{ user.account_status }}</dd>
+    <dt>Member since</dt><dd>{{ user.date_joined|date:"j M Y" }}</dd>
+  </dl>
+</article>
+{% endblock %}

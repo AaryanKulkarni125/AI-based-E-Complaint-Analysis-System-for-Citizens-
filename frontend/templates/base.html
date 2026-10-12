@@ -1,0 +1,60 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}E-Complaint System{% endblock %} · AI-Powered E-Complaint System</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="{% url 'home' %}">
+        <span class="brand-mark" aria-hidden="true">EC</span>
+        <span>E-Complaint System</span>
+      </a>
+
+      <nav class="main-nav" aria-label="Main">
+        {% if user.is_authenticated %}
+          <a href="{% url 'accounts:dashboard' %}">Dashboard</a>
+          {% if user.is_citizen %}
+            <a href="{% url 'complaints:submit' %}">Submit complaint</a>
+            <a href="{% url 'complaints:my_list' %}">My complaints</a>
+          {% elif user.is_officer %}
+            <a href="{% url 'complaints:officer_list' %}">Assigned complaints</a>
+          {% endif %}
+          <span class="nav-user">{{ user.get_full_name|default:user.username }}
+            <span class="badge badge-role">{{ user.get_role_display }}</span></span>
+          <form method="post" action="{% url 'accounts:logout' %}" class="inline-form">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-ghost">Log out</button>
+          </form>
+        {% else %}
+          <a href="{% url 'accounts:login' %}">Log in</a>
+          <a href="{% url 'accounts:register_choice' %}" class="btn btn-primary btn-sm">Create account</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="container">
+    {% if messages %}
+      <div class="messages" role="status">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.level_tag|default:'info' }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">AI-Powered E-Complaint Analysis System for Quick Response to Citizen Complaints</div>
+  </footer>
+
+  <script src="{% static 'js/app.js' %}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

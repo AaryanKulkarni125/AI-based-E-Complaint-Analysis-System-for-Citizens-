@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Assigned complaints{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Assigned complaints</h1>
+    <p class="muted">Complaints routed to you. Open one to acknowledge it, work on it and resolve it.</p>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="num">{{ counts.pending }}</div><div class="lbl">Pending</div></div>
+  <div class="stat"><div class="num">{{ counts.resolved }}</div><div class="lbl">Resolved / closed</div></div>
+</div>
+
+<nav class="filters" aria-label="Filter by status">
+  <a class="chip {% if not active_status %}active{% endif %}" href="?sort={{ sort }}">All</a>
+  {% for value, label in statuses %}
+    <a class="chip {% if active_status == value %}active{% endif %}" href="?status={{ value }}&sort={{ sort }}">{{ label }}</a>
+  {% endfor %}
+</nav>
+<nav class="filters" aria-label="Sort order">
+  <span class="muted">Sort by:</span>
+  <a class="chip {% if sort == 'priority' %}active{% endif %}" href="?sort=priority{% if active_status %}&status={{ active_status }}{% endif %}">Priority</a>
+  <a class="chip {% if sort == 'date' %}active{% endif %}" href="?sort=date{% if active_status %}&status={{ active_status }}{% endif %}">Newest first</a>
+</nav>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Tracking ID</th><th>Citizen</th><th>Location</th><th>Priority</th><th>Submitted</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for c in complaints %}
+        <tr>
+          <td><a href="{% url 'complaints:detail' c.pk %}">{{ c.reference }}</a></td>
+          <td>{{ c.citizen.get_full_name|default:c.citizen.username }}</td>
+          <td>{{ c.location }}</td>
+          <td><span class="badge badge-{{ c.priority }}">{{ c.get_priority_display }}</span></td>
+          <td>{{ c.submitted_at|date:"j M Y, H:i" }}</td>
+          <td><span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="empty">
+          {% if active_status %}No complaints with this status.{% else %}No complaints have been assigned to you yet.{% endif %}
+        </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
